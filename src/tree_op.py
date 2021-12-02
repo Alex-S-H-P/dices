@@ -1,6 +1,9 @@
 import random
 import typing
 
+ADVANTAGE_TOKEN = ["adv", "avantage", "av", "max"]
+DISADVANTAGE_TOKEN = ["disadv", "dadv", "désavantage", "desavantage", "dav", "min"]
+
 
 def p_len(s: str) -> int:
     """Because the length of an ANSI containing string is a bore..."""
@@ -16,70 +19,116 @@ def p_len(s: str) -> int:
     return count
 
 
+def combine(d1: dict[int, float], d2: dict[int, float], op: typing.Callable):
+    result = {}
+    for v1 in d1:
+        for v2 in d2:
+            y = op(v1, v2)
+            if y not in result:
+                result[y] = d1[v1] * d2[v2]
+            else:
+                result[y] += d1[v1] * d2[v2]
+    return result
+
+
 class node:
 
     def __init__(self, is_value: bool = None, expression: str = "0", base_priority: int = 0):
         self.expression = expression
+        if self.expression in ADVANTAGE_TOKEN:
+            self.expression = ADVANTAGE_TOKEN[0]
+        if self.expression in DISADVANTAGE_TOKEN:
+            self.expression = DISADVANTAGE_TOKEN[0]
         self.is_value = is_value if is_value is not None else True
         self.defaulted = is_value is None
         self.left_child: typing.Optional[node] = None
         self.right_child: typing.Optional[node] = None
         self.solved = False
         self.value: int = 0
-        self.max: int = 0
-        self.avg: float = 0.
+        self.probas: dict[int, float] = {}
         self._base_priority = base_priority
 
-    def solve(self) -> tuple[int, int, float]:
+    def expected_value(self):
+        if not self.solved:
+            self.solve()
+        return sum([s * self.probas[s] for s in self.probas]) / len(self.probas) if len(self.probas) > 0 else 0.
+
+    def solve(self) -> int:
         if self.solved:
-            return self.value, self.max, self.avg
+            return self.value
         if self.is_value:
             if "d" in self.expression:
+                if self.expression[0] == "d":
+                    self.expression = "1" + self.expression
                 fragments = self.expression.split("d")
+                self.value = 0
                 multi = int(fragments[0])
                 size = int(fragments[1])
+                self.probas = {0: 1.}
                 for i in range(multi):
                     self.value += random.randint(1, size)
-                    self.max += size
-                    self.avg += (size + 1) / 2
+                    pb = {}
+                    for already_recorded in self.probas:
+                        for gotten in range(1, size + 1):
+                            if gotten + already_recorded in pb:
+                                pb[gotten + already_recorded] += 1 / size * self.probas[already_recorded]
+                            else:
+                                pb[gotten + already_recorded] = 1 / size * self.probas[already_recorded]
+                    self.probas = pb
                 self.solved = True
             else:
                 self.value = int(self.expression)
-                self.max = self.value
-                self.avg = float(self.value)
+                self.probas = {self.value: 1}
                 self.solved = True
         else:
             # this node is an operator
             if self.expression == "*":
                 self.value: int = 1
-                self.max: int = 1
-                self.avg: float = 1.
+                self.probas = {1: 1.}
                 for c in self.children:
-                    v, m, a = c.solve()
+                    v = c.solve()
+                    self.probas = combine(self.probas, c.probas, op=lambda x, y: x * y)
                     self.value *= v
-                    self.max *= m
-                    self.avg *= a
             elif self.expression == "/":
-                self.value, self.max, self.avg = self.children[0].solve()
-                for c in self.children[1:]:
-                    v, m, a = c.solve()
-                    self.value = self.value // v
-                    self.max = self.max // m
-                    self.avg = self.avg / a
+                self.value = self.left_child.solve() // self.right_child.solve()
+                self.probas = combine(self.left_child.probas, self.right_child.probas, op=lambda x, y: x // y)
             elif self.expression == "+":
-                for c in self.children:
-                    v, m, a = c.solve()
-                    self.value += v
-                    self.max += m
-                    self.avg += a
+                self.value = (self.left_child.solve() if self.left_child is not None else 0) + self.right_child.solve()
+                self.probas = combine(self.left_child.probas, self.right_child.probas, op=lambda x, y: x + y)
             elif self.expression == "-":
-                self.value, self.max, self.avg = self.children[0].solve()
-                for c in self.children[1:]:
-                    v, m, a = c.solve()
-                    self.value -= v
-                    self.max -= m
-                    self.avg -= a
-        return self.value, self.max, self.avg
+                if self.left_child is None:
+                    self.value = -self.right_child.solve()
+                else:
+                    self.value = self.left_child.solve() - self.right_child.solve()
+                self.probas = combine(self.left_child.probas, self.right_child.probas, op=lambda x, y: x - y)
+            elif self.expression == ADVANTAGE_TOKEN[0]:
+                self.probas = {-2 ** 31: 1.}
+                self.value = -2 ** 31
+                if self.left_child is not None:
+                    repeats = self.left_child.solve()
+                else:
+                    repeats = 2
+                for _ in range(repeats):
+                    self.value = max(self.right_child.solve(), self.value)
+                    # print("repeat", self.value, self.right_child.value, repeats, _)
+                    self.probas = combine(self.right_child.probas, self.probas, op=lambda x, y: max(x, y))
+                    self.right_child.solved = False  # we want independent dice rolls
+                    self.right_child.value = 0
+            elif self.expression == DISADVANTAGE_TOKEN[0]:
+                self.probas = {2**31:1.}
+                self.value = 2**31
+                if self.left_child is not None:
+                    repeats = self.left_child.solve()
+                else:
+                    repeats = 2
+                for _ in range(repeats):
+                    self.value = min(self.right_child.solve(), self.value)
+                    # print("repeat", self.value, self.right_child.value, repeats, _)
+                    self.probas = combine(self.right_child.probas, self.probas, op=lambda x, y: min(x, y))
+                    self.right_child.solved = False # we want independent dice rolls
+                    self.right_child.value = 0
+        self.solved = True
+        return self.value
 
     @property
     def children(self):
@@ -126,7 +175,7 @@ class node:
 
     def _to_str(self) -> tuple[list[str], int]:
         if self.is_value:
-            return ["\033[32;1m"+self.expression+"\033[0m"], len(self.expression)
+            return ["\033[32;1m" + self.expression + "\033[0m"], len(self.expression)
         else:
             offset = 0
             # we are an op . let's check how well we do
