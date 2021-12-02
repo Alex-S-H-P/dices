@@ -26,4 +26,6 @@ It might look like this :
 Got 3 (out of 6 maximum, 4.0 expected)
 ```
 
+You can also use the `adv` and the `disadv` key words to enable advantage and disadvantage. **Please note that as of yet, critical success or failure is not taken into account when considering this**
+
 have fun !
