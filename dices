@@ -1,3 +1,3 @@
 #! /bin/bash
 
-python3 /shortcuts/src/dices.py
+python3 ./src/dices.py
