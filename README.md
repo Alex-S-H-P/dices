@@ -1,4 +1,4 @@
-# dices
+# Dices
 a dice-parser to allow for better dnd games
 
 
@@ -27,5 +27,17 @@ Got 3 (out of 6 maximum, 4.0 expected)
 ```
 
 You can also use the `adv` and the `disadv` key words to enable advantage and disadvantage. **Please note that as of yet, critical success or failure is not taken into account when considering this**
+
+## UPDATE RELEASE 2
+
+You can now have a dnd compatible set of dices thanks to the handy `dnd` keyword.
+
+You can use it like this !
+```
+dnd
+1d20
+```
+
+You will now be warned if any of the d20s reach a critical value !
 
 have fun !

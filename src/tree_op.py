@@ -3,6 +3,8 @@ import typing
 
 ADVANTAGE_TOKEN = ["adv", "avantage", "av", "max"]
 DISADVANTAGE_TOKEN = ["disadv", "dadv", "désavantage", "desavantage", "dav", "min"]
+CRITICAL_DICE_PERM = []
+CRITICAL_DICE_TMP  = []
 
 
 def p_len(s: str) -> int:
@@ -66,7 +68,7 @@ class node:
                 size = int(fragments[1])
                 self.probas = {0: 1.}
                 for i in range(multi):
-                    self.value += random.randint(1, size)
+                    self.value += (dice_roll := random.randint(1, size))
                     pb = {}
                     for already_recorded in self.probas:
                         for gotten in range(1, size + 1):
@@ -75,6 +77,15 @@ class node:
                             else:
                                 pb[gotten + already_recorded] = 1 / size * self.probas[already_recorded]
                     self.probas = pb
+                    if "d"+str(size) in CRITICAL_DICE_PERM + CRITICAL_DICE_TMP:
+                        if dice_roll == 1:
+                            print(f"\033[33mDice {i} (of the {self.expression}) rolled a \033[31;1mNATURAL 1\033[33m "
+                                  f"which is a critical failure\033[0m")
+                        elif dice_roll == size:
+                            print(f"\033[33mDice {i} (of the {self.expression}) rolled a "
+                                  f"\033[32;1mNATURAL {size}\033[33m which is a critical success\033[0m")
+                        # else:
+                            # print(dice_roll)
                 self.solved = True
             else:
                 self.value = int(self.expression)

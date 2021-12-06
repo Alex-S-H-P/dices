@@ -1,17 +1,12 @@
 import sys
+from typing import Optional
 
 import tree_op
 from tree_op import node
 
-OPERATION_TOKENS = ["+", "-", "*", "/", "(", ")"] + tree_op.ADVANTAGE_TOKEN + tree_op.DISADVANTAGE_TOKEN
-
-
-def erase():
-    sys.stdout.write("\033[K")
-
-
-def upLine():
-    sys.stdout.write("\033[F")
+OPERATION_TOKENS = ["+", "-", "*", "/", "(", ")", "|", ">", "&"] + tree_op.ADVANTAGE_TOKEN + tree_op.DISADVANTAGE_TOKEN
+CRITICAL_DICE_PERM = tree_op.CRITICAL_DICE_PERM  # by default do not warn when a critical roll is made. Other wise, warn me.
+CRITICAL_DICE_TMP = tree_op.CRITICAL_DICE_TMP
 
 
 def segment(i: str) -> list[str]:
@@ -27,9 +22,7 @@ def segment(i: str) -> list[str]:
             # If you have a parentheses with no operator beforehand,
             # then the operator is meant to be a multiplication sign (*)
             if len(els) > 0:
-                print(char, els[-1], els[-1] not in OPERATION_TOKENS)
                 if char == "(" and (els[-1] not in OPERATION_TOKENS):
-                    print("defaulting on parentheses")
                     els.append("*")
             if char != " ":
                 els.append(char)
@@ -47,11 +40,50 @@ def segment(i: str) -> list[str]:
     return els
 
 
+def consider_settings(i: list[str]) -> int:
+    """Returns true if the token implement settings. Only the first tokens are considered as settings
+
+    Both the pipe ('|') character and the greater than ('>') mean that the setting is to be used only for this time.
+    The ampersand character means that the setting is to be kept for the whole session.
+
+    Example :
+    crit 1d20 & 1d20
+    means make the d20 critical (warns you when you hit either a 1 or a 20) for the whole session
+    then roll a d20.
+    """
+    # most commands won't be setting up anything. Let's have them go
+    splitting_tokens = ["|", ">", "&"]
+    permanent_tokens = ["&"]
+    c = False
+    global_parameter_to_set = []
+    for token in splitting_tokens:
+        if token in i:
+            c = True
+            # setting up the permanence or no of the command
+            if token in permanent_tokens:
+                global_parameter_to_set = CRITICAL_DICE_PERM
+            else:
+                global_parameter_to_set = CRITICAL_DICE_TMP
+            break
+    if not c:
+        return 0
+
+    for idx, token in enumerate(i):
+        if token in splitting_tokens:
+            return idx + 1
+        if token.lower() in ["crits", "crit", "warn", "warns", "critical", "c", "-c"]:
+            # we now want to crit.
+            # the next token must be a dice (because otherwise we would have just set ourselves for a dnd mode
+            assert "d" in (NEXT_TOKEN := i[idx + 1]) and NEXT_TOKEN[1:].isnumeric()
+            global_parameter_to_set.append(NEXT_TOKEN)
+
+
 def _decipher(i: list[str], parentheses_priority_offset=10) -> tuple[int, int, float, dict[int, float]]:
     """Renvoie une valeur aléatoire, la valeur maximale et la valeur moyenne à laquelle on pourrait s'attendre
     Operation order : (), *, /, +, -, dice
     Parentheses do not need to be closed
     Parentheses with no operation imply a multiplication (*) """
+    i = i[consider_settings(i):]
     print("\033[34m" +
           f"parsing\033[0m... \033[36m{len(i)}\033[0m token{'s' if len(i) > 1 else ''} found : \033[36m{i}\033[0m")
     base_priority = 0
@@ -103,14 +135,31 @@ def getF(proba, value) -> float:
 
 def main():
     print("\033[37;1m", "-" * 42, "DICE ENVIRONMENT", "-" * 42, "\033[0m", sep="\n")
+    global CRITICAL_DICE_PERM
     while True:
         input_str = input()
         if input_str.lower() in ["", "q", "quit", "no", "bye", "exit", "e", "-q", "-e"]:
+            print("\033[36;1mBye !\033[0m")
             break
-        v, m, a, P = decipher(input_str)
-        print('\tResult :\n\n' +
-              f'Got {colorise(v, P)} (out of \033[36;1m{m}\033[0m maximum, \033[36;1m{a:.2f}\033[0m expected, ' +
-              f'F = \033[36;1m{100*getF(P, v):.1f}%\033[0m)')
+        elif input_str.lower() in ["dnd", "d&d", "critical", "crit", "dungeon&dragon", "crits", "criticals"
+                                                                                                "dungeon & dragon",
+                                   "dungeon and dragon", "count crits", "count criticals",
+                                   "count critical", "d&d&d&d"]:
+            CRITICAL_DICE_PERM.append("d20")
+            print("DND mode active. D20s will now announce critical scores")
+            continue
+        elif input_str.lower() in ["reboot", "rb", "boot", "nocrit"]:
+            CRITICAL_DICE_PERM = []
+            "Reset"
+            print("-"*63)
+            continue
+        try:
+            v, m, a, P = decipher(input_str)
+            print('\tResult :\n\n' +
+                  f'Got {colorise(v, P)} (out of \033[36;1m{m}\033[0m maximum, \033[36;1m{a:.2f}\033[0m expected, ' +
+                  f'F = \033[36;1m{100 * getF(P, v):.1f}%\033[0m)')
+        except Exception as e:
+            print(e)
         print("-" * 63)
 
 
