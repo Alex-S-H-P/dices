@@ -4,8 +4,10 @@ from typing import Optional
 import tree_op
 from tree_op import node
 
-OPERATION_TOKENS = ["+", "-", "*", "/", "(", ")", "|", ">", "&"] + tree_op.ADVANTAGE_TOKEN + tree_op.DISADVANTAGE_TOKEN
-CRITICAL_DICE_PERM = tree_op.CRITICAL_DICE_PERM  # by default do not warn when a critical roll is made. Other wise, warn me.
+OPERATION_TOKENS = ["+", "-", "*", "/", "(", ")", "|", "#", "&"].__add__(
+    tree_op.ADVANTAGE_TOKEN + tree_op.DISADVANTAGE_TOKEN + tree_op.DROP_TOKEN
+)
+CRITICAL_DICE_PERM = tree_op.CRITICAL_DICE_PERM  # The dices that have a criticality
 CRITICAL_DICE_TMP = tree_op.CRITICAL_DICE_TMP
 
 
@@ -52,7 +54,7 @@ def consider_settings(i: list[str]) -> int:
     then roll a d20.
     """
     # most commands won't be setting up anything. Let's have them go
-    splitting_tokens = ["|", ">", "&"]
+    splitting_tokens = ["|", "#", "&"]
     permanent_tokens = ["&"]
     c = False
     global_parameter_to_set = []
@@ -67,14 +69,14 @@ def consider_settings(i: list[str]) -> int:
             break
     if not c:
         return 0
-
     for idx, token in enumerate(i):
         if token in splitting_tokens:
             return idx + 1
         if token.lower() in ["crits", "crit", "warn", "warns", "critical", "c", "-c"]:
             # we now want to crit.
             # the next token must be a dice (because otherwise we would have just set ourselves for a dnd mode
-            assert "d" in (NEXT_TOKEN := i[idx + 1]) and NEXT_TOKEN[1:].isnumeric()
+            NEXT_TOKEN = i[idx + 1]
+            assert "d" in NEXT_TOKEN and NEXT_TOKEN[1:].isnumeric()
             global_parameter_to_set.append(NEXT_TOKEN)
 
 
@@ -87,6 +89,8 @@ def _decipher(i: list[str], parentheses_priority_offset=10) -> tuple[int, int, f
     print("\033[34m" +
           f"parsing\033[0m... \033[36m{len(i)}\033[0m token{'s' if len(i) > 1 else ''} found : \033[36m{i}\033[0m")
     base_priority = 0
+    if len(i) == 0:
+        raise SyntaxError("empty command")
     while i[0] in ("(", ")"):
         if i.pop(0) == "(":
             base_priority += parentheses_priority_offset
@@ -116,7 +120,10 @@ def _decipher(i: list[str], parentheses_priority_offset=10) -> tuple[int, int, f
 
 
 def decipher(i: str) -> tuple[int, int, float, dict[int:float]]:
-    return _decipher(segment(i))
+    t: tuple = tuple(_decipher(segment(i)))
+    while len(CRITICAL_DICE_TMP) > 0:
+        CRITICAL_DICE_TMP.pop()  # we empty the temp list
+    return t
 
 
 def colorise(value, proba):
@@ -151,7 +158,7 @@ def main():
         elif input_str.lower() in ["reboot", "rb", "boot", "nocrit"]:
             CRITICAL_DICE_PERM = []
             "Reset"
-            print("-"*63)
+            print("-" * 63)
             continue
         try:
             v, m, a, P = decipher(input_str)
@@ -159,7 +166,7 @@ def main():
                   f'Got {colorise(v, P)} (out of \033[36;1m{m}\033[0m maximum, \033[36;1m{a:.2f}\033[0m expected, ' +
                   f'F = \033[36;1m{100 * getF(P, v):.1f}%\033[0m)')
         except Exception as e:
-            print(e)
+            raise e
         print("-" * 63)
 
 

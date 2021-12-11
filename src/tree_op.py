@@ -1,10 +1,13 @@
 import random
 import typing
 
+import numpy as np
+
 ADVANTAGE_TOKEN = ["adv", "avantage", "av", "max"]
 DISADVANTAGE_TOKEN = ["disadv", "dadv", "désavantage", "desavantage", "dav", "min"]
+DROP_TOKEN = ["drop"]
 CRITICAL_DICE_PERM = []
-CRITICAL_DICE_TMP  = []
+CRITICAL_DICE_TMP = []
 
 
 def p_len(s: str) -> int:
@@ -33,14 +36,28 @@ def combine(d1: dict[int, float], d2: dict[int, float], op: typing.Callable):
     return result
 
 
+def combinations(n_iter: int, max_n: int, min_n: int = 1) -> typing.Iterable:
+    cur_list = [min_n] * n_iter
+    while cur_list[0] <= max_n:
+        yield cur_list
+        pointer = -1
+        cur_list[pointer] += 1
+        while cur_list[pointer] > max_n and pointer > -n_iter:
+            cur_list[pointer] = min_n
+            pointer -= 1
+            cur_list[pointer] += 1
+
+
 class node:
 
     def __init__(self, is_value: bool = None, expression: str = "0", base_priority: int = 0):
         self.expression = expression
         if self.expression in ADVANTAGE_TOKEN:
             self.expression = ADVANTAGE_TOKEN[0]
-        if self.expression in DISADVANTAGE_TOKEN:
+        elif self.expression in DISADVANTAGE_TOKEN:
             self.expression = DISADVANTAGE_TOKEN[0]
+        elif self.expression in DROP_TOKEN:
+            self.expression = DROP_TOKEN[0]
         self.is_value = is_value if is_value is not None else True
         self.defaulted = is_value is None
         self.left_child: typing.Optional[node] = None
@@ -77,7 +94,7 @@ class node:
                             else:
                                 pb[gotten + already_recorded] = 1 / size * self.probas[already_recorded]
                     self.probas = pb
-                    if "d"+str(size) in CRITICAL_DICE_PERM + CRITICAL_DICE_TMP:
+                    if "d" + str(size) in CRITICAL_DICE_PERM + CRITICAL_DICE_TMP:
                         if dice_roll == 1:
                             print(f"\033[33mDice {i} (of the {self.expression}) rolled a \033[31;1mNATURAL 1\033[33m "
                                   f"which is a critical failure\033[0m")
@@ -85,7 +102,7 @@ class node:
                             print(f"\033[33mDice {i} (of the {self.expression}) rolled a "
                                   f"\033[32;1mNATURAL {size}\033[33m which is a critical success\033[0m")
                         # else:
-                            # print(dice_roll)
+                        # print(dice_roll)
                 self.solved = True
             else:
                 self.value = int(self.expression)
@@ -126,8 +143,8 @@ class node:
                     self.right_child.solved = False  # we want independent dice rolls
                     self.right_child.value = 0
             elif self.expression == DISADVANTAGE_TOKEN[0]:
-                self.probas = {2**31:1.}
-                self.value = 2**31
+                self.probas = {2 ** 31: 1.}
+                self.value = 2 ** 31
                 if self.left_child is not None:
                     repeats = self.left_child.solve()
                 else:
@@ -136,8 +153,70 @@ class node:
                     self.value = min(self.right_child.solve(), self.value)
                     # print("repeat", self.value, self.right_child.value, repeats, _)
                     self.probas = combine(self.right_child.probas, self.probas, op=lambda x, y: min(x, y))
-                    self.right_child.solved = False # we want independent dice rolls
+                    self.right_child.solved = False  # we want independent dice rolls
                     self.right_child.value = 0
+            elif self.expression == DROP_TOKEN[0]:
+                # now, a drop command can be used in a few ways...
+                # "2d2 drop lowest"  means drop the lowest die.
+                # "3d2 drop lowest2" means drop the two lowest dices
+                # "2d2 drop highest" means drop the highest die.
+                # "drop 2d2" defaults to "2d2 drop lowest"
+                lowest: bool = True
+                how_many_to_take: int = 1
+                size: int = 6
+                how_many_to_roll: int = 2
+                if self.right_child is None:
+                    raise ValueError("Drop commands need an argument on the right to indicate what to drop")
+                elif not self.right_child.is_value:
+                    raise ValueError("Drop commands cannot have a non value at their direct right")
+                elif "highest" in self.right_child.expression or "lowest" in self.right_child.expression:
+                    # we are to determine what to drop
+                    assert self.right_child.expression.strip("highlowest").__add__("1").isnumeric(), "invalid value" + \
+                                                                                                     f"{self.right_child.expression}"
+                    if "highest" in self.right_child.expression:
+                        lowest = False
+                    if len(numbers := self.right_child.expression.strip("highlowest")):
+                        how_many_to_take = int(numbers)
+                    assert all(config := [
+                        self.left_child is not None,
+                        len(split := self.left_child.expression.split("d")) <= 2,
+                        all([v.isnumeric() for v in split])]), f"invalid parametrized configuration: config {config}"
+                    size = int(split[1])
+                    how_many_to_roll = int(split[0])
+                else:
+                    assert all([
+                        len(split := self.right_child.expression.split("d")) <= 2,
+                        all([v.isnumeric() for v in split]),
+                        self.left_child is None]), "invalid die-only configuration"
+                    size = int(split[1])
+                    how_many_to_roll = int(split[0])
+                # starting with all possible dice rolls
+                p_dict: dict[tuple[int], float] = dict(
+                    [(tuple(comb), 1 / (size ** how_many_to_roll)) for comb in combinations(how_many_to_roll, size)]
+                )
+                # we take out the ones we don't like and then combine them all
+                for combo in p_dict:
+                    proba = p_dict[combo]
+                    c: list[int] = list(combo)
+                    for _ in range(how_many_to_take):
+                        if lowest:
+                            i = np.argmin(c)
+                        else:
+                            i = np.argmax(c)
+                        c = [C for j, C in enumerate(c) if j != i]
+                    s = sum(c)
+                    if s in self.probas:
+                        self.probas[s] += proba
+                    else:
+                        self.probas[s] = proba
+                # and now we choose a value
+                r = random.random()
+                sigma = 0
+                for k in sorted(list(self.probas.keys())):
+                    sigma += self.probas[k]
+                    self.value = k
+                    if sigma > r:
+                        break
         self.solved = True
         return self.value
 
