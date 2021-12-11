@@ -166,7 +166,7 @@ def main():
                   f'Got {colorise(v, P)} (out of \033[36;1m{m}\033[0m maximum, \033[36;1m{a:.2f}\033[0m expected, ' +
                   f'F = \033[36;1m{100 * getF(P, v):.1f}%\033[0m)')
         except Exception as e:
-            raise e
+            print(f"\033[31m{e}\033[0m")
         print("-" * 63)
 
 
