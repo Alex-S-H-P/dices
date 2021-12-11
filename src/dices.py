@@ -1,14 +1,21 @@
+import os
+import platform
 import sys
 from typing import Optional
 
 import tree_op
 from tree_op import node
 
+if platform.platform() == "Windows":
+    os.system("color")
+
 OPERATION_TOKENS = ["+", "-", "*", "/", "(", ")", "|", "#", "&"].__add__(
     tree_op.ADVANTAGE_TOKEN + tree_op.DISADVANTAGE_TOKEN + tree_op.DROP_TOKEN
 )
 CRITICAL_DICE_PERM = tree_op.CRITICAL_DICE_PERM  # The dices that have a criticality
 CRITICAL_DICE_TMP = tree_op.CRITICAL_DICE_TMP
+NUM_LINES = 10
+p_len = tree_op.p_len
 
 
 def segment(i: str) -> list[str]:
