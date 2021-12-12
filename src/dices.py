@@ -9,6 +9,9 @@ OPERATION_TOKENS = ["+", "-", "*", "/", "(", ")", "|", "#", "&"].__add__(
 )
 CRITICAL_DICE_PERM = tree_op.CRITICAL_DICE_PERM  # The dices that have a criticality
 CRITICAL_DICE_TMP = tree_op.CRITICAL_DICE_TMP
+NUM_LINES = 6
+INPUTS_THAT_ASK_FOR_GRAPH = ["graph", "draw", "g", "repartition", "see"]
+p_len = tree_op.p_len
 
 
 def segment(i: str) -> list[str]:
@@ -80,6 +83,74 @@ def consider_settings(i: list[str]) -> int:
             global_parameter_to_set.append(NEXT_TOKEN)
 
 
+def show_P(proba: dict[int, float], roll: int = None) -> None:
+    """Should display something like this
+      /\
+      |
+    .3+       ##
+      |    ########
+      |#################
+    0.+----+----+----+--->
+      0    5    A    F
+    """
+    lines: list[str] = ["" for _ in range(NUM_LINES)]
+
+    def write_at(char: str, x: int, y: int) -> None:
+        if len(char) > 1:
+            for i, c in enumerate(char):
+                write_at(c, x + i, y)
+            return
+        if p_len(lines[y]) <= x:
+            lines[y] += " " * (x - p_len(lines[y])) + char
+        else:
+            start = None
+            end = -1
+            for char_idx in range(len(lines[y])):
+                if start is None and p_len(lines[y][:char_idx]) == x:
+                    start = char_idx
+                    end = start + 1
+                elif p_len(lines[y][:char_idx]) == x:
+                    end = char_idx
+            # print(lines[y][:start], lines[y][end+1:], start, end, lines[y], x, y, sep="\033[0m||", end="\033[0m\n")
+            lines[y] = lines[y][:start] + char + lines[y][end + 1:]
+
+    items, keys = proba.values(), sorted(proba.keys())
+    y_max = max(items)
+    y_min = min(items)
+    if abs(y_min) < 1.:
+        y_min = 0
+    x_min = min(keys)
+    x_max = max(keys)
+    n_lines = NUM_LINES - (3 if roll is not None else 2)
+
+    def scale(y: float) -> int:
+        """Approximates the y coordinate in the plane"""
+        return int(n_lines * (y - y_min) / (y_max - y_min) + .5)
+
+    lines[0] = f"\033[36;1m{y_max:.2f}\033[0m"
+    n = p_len(lines[0])
+    lines[0] += "+\033[33;1m"
+    lines[n_lines] = f"\033[36;1m{y_min:.2f}\033[0m+"
+    for l_nb in range(1, n_lines):
+        lines[l_nb] = " " * n + "|\033[33;1m"
+    n += 1
+    for x in proba:
+        precise_y = proba[x]
+        for y in range(scale(precise_y)):
+            write_at("#", x + n - x_min, n_lines - 1 - y)
+    lines[n_lines] += "-" * (x_max - x_min + n) + "-->"
+    lines[n_lines + 1] = "\033[36;1m" + " " * n
+    for step in range(x_min, x_max + 5, 5):
+        if step != x_min:
+            write_at("+", step + (n - 1) - x_min, n_lines)
+        write_at(str(step), step + (n - 1) - x_min, n_lines + 1)
+    # if there is a pointer, print it !
+    if roll is not None:
+        lines[-1] = " " * (n + roll - x_min - 1) + "\033[32;1m^\033[0m"
+    for line in lines:
+        print(line, end="\033[0m\n")
+
+
 def _decipher(i: list[str], parentheses_priority_offset=10) -> tuple[int, int, float, dict[int, float]]:
     """Renvoie une valeur aléatoire, la valeur maximale et la valeur moyenne à laquelle on pourrait s'attendre
     Operation order : (), *, /, +, -, dice
@@ -143,11 +214,21 @@ def getF(proba, value) -> float:
 def main():
     print("\033[37;1m", "-" * 42, "DICE ENVIRONMENT", "-" * 42, "\033[0m", sep="\n")
     global CRITICAL_DICE_PERM
+    P, v = None, None
     while True:
         input_str = input()
         if input_str.lower() in ["", "q", "quit", "no", "bye", "exit", "e", "-q", "-e"]:
             print("\033[36;1mBye !\033[0m")
             break
+        elif (cmd := input_str.lower().split())[0] in INPUTS_THAT_ASK_FOR_GRAPH:
+            if P is not None:
+                if len(cmd) == 2 and cmd[1].isnumeric():
+                    global NUM_LINES
+                    NUM_LINES = int(cmd[1])
+                show_P(P, v)
+            else:
+                print("\033[31mCannot graph last dice roll as no dice roll was found in memory\033[0m")
+            continue
         elif input_str.lower() in ["dnd", "d&d", "critical", "crit", "dungeon&dragon", "crits", "criticals"
                                                                                                 "dungeon & dragon",
                                    "dungeon and dragon", "count crits", "count criticals",
