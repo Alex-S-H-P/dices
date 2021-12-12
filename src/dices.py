@@ -142,11 +142,11 @@ def show_P(proba: dict[int, float], roll: int = None) -> None:
     lines[n_lines + 1] = "\033[36;1m" + " " * n
     for step in range(x_min, x_max + 5, 5):
         if step != x_min:
-            write_at("+", step + (n - 1) - x_min, n_lines)
-        write_at(str(step), step + (n - 1) - x_min, n_lines + 1)
+            write_at("+", step + n - x_min, n_lines)
+        write_at(str(step), step + n - x_min, n_lines + 1)
     # if there is a pointer, print it !
     if roll is not None:
-        lines[-1] = " " * (n + roll - x_min - 1) + "\033[32;1m^\033[0m"
+        lines[-1] = " " * (n + roll - x_min) + "\033[32;1m^\033[0m"
     for line in lines:
         print(line, end="\033[0m\n")
 
