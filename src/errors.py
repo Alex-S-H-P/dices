@@ -1,0 +1,2 @@
+class ShutDownCommand(KeyboardInterrupt):
+    pass

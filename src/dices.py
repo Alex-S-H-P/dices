@@ -3,6 +3,7 @@ from typing import Optional
 
 import tree_op
 from tree_op import node
+import errors
 
 OPERATION_TOKENS = ["+", "-", "*", "/", "(", ")", "|", "#", "&"].__add__(
     tree_op.ADVANTAGE_TOKEN + tree_op.DISADVANTAGE_TOKEN + tree_op.DROP_TOKEN
@@ -83,7 +84,7 @@ def consider_settings(i: list[str]) -> int:
             global_parameter_to_set.append(NEXT_TOKEN)
 
 
-def show_P(proba: dict[int, float], roll: int = None) -> None:
+def show_P(proba: dict[int, float], roll: int = None) -> str:
     """Should display something like this
       /\
       |
@@ -147,8 +148,10 @@ def show_P(proba: dict[int, float], roll: int = None) -> None:
     # if there is a pointer, print it !
     if roll is not None:
         lines[-1] = " " * (n + roll - x_min) + "\033[32;1m^\033[0m"
+    val = ""
     for line in lines:
-        print(line, end="\033[0m\n")
+        val += line + "\n"
+    return val
 
 
 def _decipher(i: list[str], parentheses_priority_offset=10) -> tuple[int, int, float, dict[int, float]]:
@@ -249,6 +252,38 @@ def main():
         except Exception as e:
             print(f"\033[31m{e}\033[0m")
         print("-" * 63)
+
+
+def discord_main(command: str, P=None, v=None, to_send_to=None) -> tuple[str, dict, float]:
+    global CRITICAL_DICE_PERM
+    if command.lower() in ["", "q", "quit", "no", "bye", "exit", "e", "-q", "-e"]:
+        print("\033[36;1mBye !\033[0m")
+        raise errors.ShutDownCommand()
+    elif (cmd := command.lower().split())[0] in INPUTS_THAT_ASK_FOR_GRAPH:
+        if P is not None:
+            if len(cmd) == 2 and cmd[1].isnumeric():
+                global NUM_LINES
+                NUM_LINES = int(cmd[1])
+            return show_P(P, v), {}, 0.
+        else:
+            return "Cannot graph last dice roll as no dice roll was found in memory", {}, 0.
+    elif command.lower() in ["dnd", "d&d", "critical", "crit", "dungeon&dragon", "crits", "criticals"
+                                                                                            "dungeon & dragon",
+                               "dungeon and dragon", "count crits", "count criticals",
+                               "count critical", "d&d&d&d"]:
+        CRITICAL_DICE_PERM.append("d20")
+        return "DND mode active. D20s will now announce critical scores", {}, 0.
+    elif command.lower() in ["reboot", "rb", "boot", "nocrit"]:
+        CRITICAL_DICE_PERM = []
+        return "Reset", {}, 0.
+    try:
+        v, m, a, P = decipher(command)
+        return '\tResult :\n\n' + \
+               f'Got {colorise(v, P)} (out of \033[36;1m{m}\033[0m maximum, \033[36;1m{a:.2f}\033[0m expected, ' + \
+               f'F = \033[36;1m{100 * getF(P, v):.1f}%\033[0m)', P, v
+    except Exception as e:
+        print(f"\033[31m{e}\033[0m")
+    print("-" * 63)
 
 
 if __name__ == '__main__':
