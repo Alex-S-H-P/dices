@@ -154,7 +154,7 @@ def show_P(proba: dict[int, float], roll: int = None) -> str:
     return val
 
 
-def _decipher(i: list[str], parentheses_priority_offset=10) -> tuple[int, int, float, dict[int, float]]:
+def _decipher(i: list[str], parentheses_priority_offset=10, add_msg_discord=None) -> tuple[int, int, float, dict[int, float]]:
     """Renvoie une valeur aléatoire, la valeur maximale et la valeur moyenne à laquelle on pourrait s'attendre
     Operation order : (), *, /, +, -, dice
     Parentheses do not need to be closed
@@ -185,16 +185,16 @@ def _decipher(i: list[str], parentheses_priority_offset=10) -> tuple[int, int, f
             print(cur_node)  # dump the data in the log for debugging purposes
             raise e
     print(cur_node)
-    cur_node.solve()
+    cur_node.solve(add_msg_discord)
     # print(cur_node.probas, sum([k * cur_node.probas[k] for k in cur_node.probas]))
-    return (cur_node.solve(), max(cur_node.probas.keys()),
+    return (cur_node.solve(add_msg_discord), max(cur_node.probas.keys()),
             sum([k * cur_node.probas[k] for k in cur_node.probas]) if len(cur_node.probas) > 0 else 0,
             cur_node.probas
             )
 
 
-def decipher(i: str) -> tuple[int, int, float, dict[int:float]]:
-    t: tuple = tuple(_decipher(segment(i)))
+def decipher(i: str, add_msg_discord=None) -> tuple[int, int, float, dict[int:float]]:
+    t: tuple = tuple(_decipher(segment(i), add_msg_discord=add_msg_discord))
     while len(CRITICAL_DICE_TMP) > 0:
         CRITICAL_DICE_TMP.pop()  # we empty the temp list
     return t
@@ -277,10 +277,10 @@ def discord_main(command: str, P=None, v=None, to_send_to=None) -> tuple[str, di
         CRITICAL_DICE_PERM = []
         return "Reset", {}, 0.
     try:
-        v, m, a, P = decipher(command)
+        v, m, a, P = decipher(command, add_msg_discord=to_send_to)
         return '\tResult :\n\n' + \
-               f'Got {colorise(v, P)} (out of \033[36;1m{m}\033[0m maximum, \033[36;1m{a:.2f}\033[0m expected, ' + \
-               f'F = \033[36;1m{100 * getF(P, v):.1f}%\033[0m)', P, v
+               f'Got **{v}** (out of *{m}* maximum, *{a:.2f}* expected, ' + \
+               f'**{100 * getF(P, v):.1f}%** lucky', P, v
     except Exception as e:
         print(f"\033[31m{e}\033[0m")
     print("-" * 63)
