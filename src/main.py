@@ -1,6 +1,7 @@
-import dices, errors
-import discord
 import re
+import discord
+import dices
+import errors
 
 client = discord.Client()
 d_probas: dict[int, dict] = {}
@@ -23,7 +24,8 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    print(message.__class__.__name__, message.channel.__class__.__name__, (id := message.channel.id))
+    # print(message.__class__.__name__, message.channel.__class__.__name__, (id := message.channel.id))
+    id = message.channel.id
     global d_probas, d_value
     # quick and dirty way to ensure that context persists
     message_pile = []
