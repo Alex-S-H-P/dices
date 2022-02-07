@@ -5,6 +5,7 @@ import tree_op
 from tree_op import node
 import errors
 
+EXIT_INPUTS = ["", "q", "quit", "no", "bye", "exit", "e", "-q", "-e"]
 OPERATION_TOKENS = ["+", "-", "*", "/", "(", ")", "|", "#", "&"].__add__(
     tree_op.ADVANTAGE_TOKEN + tree_op.DISADVANTAGE_TOKEN + tree_op.DROP_TOKEN
 )
@@ -220,7 +221,7 @@ def main():
     P, v = None, None
     while True:
         input_str = input()
-        if input_str.lower() in ["", "q", "quit", "no", "bye", "exit", "e", "-q", "-e"]:
+        if input_str.lower() in EXIT_INPUTS:
             print("\033[36;1mBye !\033[0m")
             break
         elif (cmd := input_str.lower().split())[0] in INPUTS_THAT_ASK_FOR_GRAPH:
