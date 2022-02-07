@@ -1,20 +1,21 @@
 import curses
 import curses.textpad as textpad
 import time
-
-import dices
-
-DISPLAY, PLAY, INPUT = 0, 1, 2
+import fight_back, dices, fight_funcs
 
 
 def center(screen, string: str, cols: int, y: int, options: int = 1) -> None:
     len = dices.p_len(string)
     x = (cols - len) // 2
-    screen.addstr(y, x, string)
+    screen.addstr(y, x, string, options)
 
 
-def handle(command: str):
-    command.lower().split()
+def handle(command: str, display: fight_funcs.Display) -> str:
+    instruction = command.lower().split()
+    if instruction[0] in fight_funcs.map:
+        return str(fight_funcs.map[instruction[0]](instruction, display))
+    else:
+        return f"UNKNOWN COMMAND {instruction[0]}"
 
 
 def main(*args, **kwargs):
@@ -38,7 +39,7 @@ def main(*args, **kwargs):
     rows_for_input = 3
     box_window = curses.newwin(1, cols, rows - rows_for_input + 1, 1)
     box = textpad.Textbox(box_window)
-    mode: int = INPUT
+    display = fight_funcs.Display()
     while True:
         rows, cols = stdscr.getmaxyx()
         refresh(rows, cols)
@@ -47,7 +48,7 @@ def main(*args, **kwargs):
             instruction = box.gather()
             if instruction.lower() in dices.EXIT_INPUTS[1:]:
                 break
-            handle(instruction)
+            handle(instruction, display)
         else:
             box.do_command(ch)
         # refresh(rows, cols)
@@ -60,6 +61,7 @@ def main(*args, **kwargs):
 
 
 if __name__ == '__main__':
+    fight = fight_back.Fight()
     stdscr = curses.initscr()
     curses.start_color()
     curses.wrapper(main)
