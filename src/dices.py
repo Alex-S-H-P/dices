@@ -14,10 +14,13 @@ CRITICAL_DICE_TMP = tree_op.CRITICAL_DICE_TMP
 NUM_LINES = 6
 INPUTS_THAT_ASK_FOR_GRAPH = ["graph", "draw", "g", "repartition", "see"]
 p_len = tree_op.p_len
+verbose = True
 
 
 def segment(i: str) -> list[str]:
-    print("\033[34m" + "segmenting...\033[0m")
+    """Segments an instruction into a series of tokens that are computationable"""
+    if verbose:
+        print("\033[34m" + "segmenting...\033[0m")
     els = []
     cur = ""
     for char in i:
@@ -155,7 +158,8 @@ def show_P(proba: dict[int, float], roll: int = None) -> str:
     return val
 
 
-def _decipher(i: list[str], parentheses_priority_offset=10, add_msg_discord=None) -> tuple[int, int, float, dict[int, float]]:
+def _decipher(i: list[str], parentheses_priority_offset=10, add_msg_discord=None) -> tuple[
+    int, int, float, dict[int, float]]:
     """Renvoie une valeur aléatoire, la valeur maximale et la valeur moyenne à laquelle on pourrait s'attendre
     Operation order : (), *, /, +, -, dice
     Parentheses do not need to be closed
@@ -269,9 +273,9 @@ def discord_main(command: str, P=None, v=None, to_send_to=None) -> tuple[str, di
         else:
             return "Cannot graph last dice roll as no dice roll was found in memory", {}, 0.
     elif command.lower() in ["dnd", "d&d", "critical", "crit", "dungeon&dragon", "crits", "criticals"
-                                                                                            "dungeon & dragon",
-                               "dungeon and dragon", "count crits", "count criticals",
-                               "count critical", "d&d&d&d"]:
+                                                                                          "dungeon & dragon",
+                             "dungeon and dragon", "count crits", "count criticals",
+                             "count critical", "d&d&d&d"]:
         CRITICAL_DICE_PERM.append("d20")
         return "DND mode active. D20s will now announce critical scores", {}, 0.
     elif command.lower() in ["reboot", "rb", "boot", "nocrit"]:
