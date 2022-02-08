@@ -72,7 +72,7 @@ class node:
             self.solve()
         return sum([s * self.probas[s] for s in self.probas]) / len(self.probas) if len(self.probas) > 0 else 0.
 
-    def solve(self) -> int:
+    def solve(self, add_msg_discord=None) -> int:
         if self.solved:
             return self.value
         if self.is_value:
@@ -98,11 +98,17 @@ class node:
                         if dice_roll == 1:
                             print(f"\033[33mDice {i} (of the {self.expression}) rolled a \033[31;1mNATURAL 1\033[33m "
                                   f"which is a critical failure\033[0m")
+                            if add_msg_discord is not None:
+                                add_msg_discord(f"Dice {i} (of the {self.expression}) rolled a **NATURAL 1** "
+                                                f"which is a **critical failure**")
+                                print("reached")
                         elif dice_roll == size:
                             print(f"\033[33mDice {i} (of the {self.expression}) rolled a "
                                   f"\033[32;1mNATURAL {size}\033[33m which is a critical success\033[0m")
-                        # else:
-                        # print(dice_roll)
+                            if add_msg_discord is not None:
+                                add_msg_discord(f"Dice {i} (of the {self.expression}) rolled a **NATURAL {size}** "
+                                                f"which is a **critical success**")
+                                print("reached")
                 self.solved = True
             else:
                 self.value = int(self.expression)

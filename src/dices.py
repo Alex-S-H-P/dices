@@ -3,7 +3,9 @@ from typing import Optional
 
 import tree_op
 from tree_op import node
+import errors
 
+EXIT_INPUTS = ["", "q", "quit", "no", "bye", "exit", "e", "-q", "-e"]
 OPERATION_TOKENS = ["+", "-", "*", "/", "(", ")", "|", "#", "&"].__add__(
     tree_op.ADVANTAGE_TOKEN + tree_op.DISADVANTAGE_TOKEN + tree_op.DROP_TOKEN
 )
@@ -12,10 +14,13 @@ CRITICAL_DICE_TMP = tree_op.CRITICAL_DICE_TMP
 NUM_LINES = 6
 INPUTS_THAT_ASK_FOR_GRAPH = ["graph", "draw", "g", "repartition", "see"]
 p_len = tree_op.p_len
+verbose = True
 
 
 def segment(i: str) -> list[str]:
-    print("\033[34m" + "segmenting...\033[0m")
+    """Segments an instruction into a series of tokens that are computationable"""
+    if verbose:
+        print("\033[34m" + "segmenting...\033[0m")
     els = []
     cur = ""
     for char in i:
@@ -83,7 +88,7 @@ def consider_settings(i: list[str]) -> int:
             global_parameter_to_set.append(NEXT_TOKEN)
 
 
-def show_P(proba: dict[int, float], roll: int = None) -> None:
+def show_P(proba: dict[int, float], roll: int = None) -> str:
     """Should display something like this
       /\
       |
@@ -147,11 +152,14 @@ def show_P(proba: dict[int, float], roll: int = None) -> None:
     # if there is a pointer, print it !
     if roll is not None:
         lines[-1] = " " * (n + roll - x_min) + "\033[32;1m^\033[0m"
+    val = ""
     for line in lines:
-        print(line, end="\033[0m\n")
+        val += line + "\n"
+    return val
 
 
-def _decipher(i: list[str], parentheses_priority_offset=10) -> tuple[int, int, float, dict[int, float]]:
+def _decipher(i: list[str], parentheses_priority_offset=10, add_msg_discord=None) -> tuple[
+    int, int, float, dict[int, float]]:
     """Renvoie une valeur aléatoire, la valeur maximale et la valeur moyenne à laquelle on pourrait s'attendre
     Operation order : (), *, /, +, -, dice
     Parentheses do not need to be closed
@@ -182,16 +190,16 @@ def _decipher(i: list[str], parentheses_priority_offset=10) -> tuple[int, int, f
             print(cur_node)  # dump the data in the log for debugging purposes
             raise e
     print(cur_node)
-    cur_node.solve()
+    cur_node.solve(add_msg_discord)
     # print(cur_node.probas, sum([k * cur_node.probas[k] for k in cur_node.probas]))
-    return (cur_node.solve(), max(cur_node.probas.keys()),
+    return (cur_node.solve(add_msg_discord), max(cur_node.probas.keys()),
             sum([k * cur_node.probas[k] for k in cur_node.probas]) if len(cur_node.probas) > 0 else 0,
             cur_node.probas
             )
 
 
-def decipher(i: str) -> tuple[int, int, float, dict[int:float]]:
-    t: tuple = tuple(_decipher(segment(i)))
+def decipher(i: str, add_msg_discord=None) -> tuple[int, int, float, dict[int:float]]:
+    t: tuple = tuple(_decipher(segment(i), add_msg_discord=add_msg_discord))
     while len(CRITICAL_DICE_TMP) > 0:
         CRITICAL_DICE_TMP.pop()  # we empty the temp list
     return t
@@ -217,7 +225,7 @@ def main():
     P, v = None, None
     while True:
         input_str = input()
-        if input_str.lower() in ["", "q", "quit", "no", "bye", "exit", "e", "-q", "-e"]:
+        if input_str.lower() in EXIT_INPUTS:
             print("\033[36;1mBye !\033[0m")
             break
         elif (cmd := input_str.lower().split())[0] in INPUTS_THAT_ASK_FOR_GRAPH:
@@ -249,6 +257,38 @@ def main():
         except Exception as e:
             print(f"\033[31m{e}\033[0m")
         print("-" * 63)
+
+
+def discord_main(command: str, P=None, v=None, to_send_to=None) -> tuple[str, dict, float]:
+    global CRITICAL_DICE_PERM
+    if command.lower() in ["", "q", "quit", "no", "bye", "exit", "e", "-q", "-e"]:
+        print("\033[36;1mBye !\033[0m")
+        raise errors.ShutDownCommand()
+    elif (cmd := command.lower().split())[0] in INPUTS_THAT_ASK_FOR_GRAPH:
+        if P is not None:
+            if len(cmd) == 2 and cmd[1].isnumeric():
+                global NUM_LINES
+                NUM_LINES = int(cmd[1])
+            return show_P(P, v), {}, 0.
+        else:
+            return "Cannot graph last dice roll as no dice roll was found in memory", {}, 0.
+    elif command.lower() in ["dnd", "d&d", "critical", "crit", "dungeon&dragon", "crits", "criticals"
+                                                                                          "dungeon & dragon",
+                             "dungeon and dragon", "count crits", "count criticals",
+                             "count critical", "d&d&d&d"]:
+        CRITICAL_DICE_PERM.append("d20")
+        return "DND mode active. D20s will now announce critical scores", {}, 0.
+    elif command.lower() in ["reboot", "rb", "boot", "nocrit"]:
+        CRITICAL_DICE_PERM = []
+        return "Reset", {}, 0.
+    try:
+        v, m, a, P = decipher(command, add_msg_discord=to_send_to)
+        return '\tResult :\n\n' + \
+               f'Got **{v}** (out of *{m}* maximum, *{a:.2f}* expected, ' + \
+               f'**{100 * getF(P, v):.1f}%** lucky', P, v
+    except Exception as e:
+        print(f"\033[31m{e}\033[0m")
+    print("-" * 63)
 
 
 if __name__ == '__main__':
