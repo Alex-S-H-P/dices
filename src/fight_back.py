@@ -88,6 +88,13 @@ class Fight:
                 self.active_id += 1
             else:
                 self.active_id = 0
+                keys = self.participants.keys()
+                if self.active_initiative == min(keys):
+                    self.active_initiative = max(keys)
+                    self.round += 1
+                else:
+                    inits = sorted((key for key in keys if key < self.active_initiative), reverse=True)
+                    self.active_initiative = inits[0]
 
         return msg
 
