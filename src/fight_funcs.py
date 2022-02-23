@@ -74,7 +74,9 @@ def set_initiative(instruction: list[len], display: Display):
         if fighter.name == name:
             bracket = display.fight.participants[fighter.initiative]
             i = index(bracket, fighter)
-            bracket.pop(i)
+     b      bracket.pop(i)
+            if len(bracket) == 0:
+                del display.fight.participants[fighter.initiative]
             display.fight.add(fighter, initiative)
     return f"OK : set the initiative of {name} at {initiative}"
 
@@ -109,6 +111,23 @@ def add_status(instruction: list[str], display: Display):
             fighter.status.append(status)
 
 
+def begin_fight(instruction: list[str], display: Display):
+    fight = display.fight
+    return fight.begin()
+
+
+def next_fight(instruction: list[str], display: Display):
+    fight = display.fight
+    return fight.next()
+
+
+def prev_fight(instruction: list[str], display: Display):
+    fight = display.fight
+    return fight.prev()
+
+
 func_map: dict[str, Operation] = {"add_participant": add_participant, "initiative": set_initiative,
                                   "set_initiative": set_initiative,
-                                  "save": save, "add_status": add_status, "load": load}
+                                  "save": save, "add_status": add_status, "load": load,
+                                  "begin": begin_fight, "next": next_fight, "n": next_fight,
+                                  "prev": prev_fight, "previous": prev_fight, "p": prev_fight}

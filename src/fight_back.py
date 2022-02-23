@@ -74,16 +74,17 @@ class Fight:
             self.active.active = False
         self.active_id = 0
         self.active_initiative = max(self.participants.keys())
+        self.active = self.participants[self.active_initiative][self.active_id]
         self.active.active = True
 
     def next(self) -> str:
         """If the fight is not begun, then starts it.
         If it has, then moves turn to the next participant"""
-        msg: str = ""
         if not self.has_begun:
-            msg = "Began fight automatically"
             self.begin()
+            return "Began fight automatically"
         else:
+            self.active.active = False
             if self.active_id < len(self.participants[self.active_initiative]) - 1:
                 self.active_id += 1
             else:
@@ -95,8 +96,30 @@ class Fight:
                 else:
                     inits = sorted((key for key in keys if key < self.active_initiative), reverse=True)
                     self.active_initiative = inits[0]
+            self.active.active = True
+        return f"{self.active_initiative}[{self.active_id}]"
 
-        return msg
+    def prev(self) -> str:
+        """If the fight has not begun, then starts it.
+        If it has, then moves turn to the previous participant"""
+
+        if not self.has_begun:
+            self.begin()
+            return "Began fight automatically"
+        else:
+            self.active.active = False
+            if self.active_id > 0:
+                self.active_id -= 1
+            else:
+                keys = self.participants.keys()
+                if self.active_initiative == max(keys):
+                    self.active_initiative = min(keys)
+                    self.round += 1
+                else:
+                    inits = sorted((key for key in keys if key > self.active_initiative))
+                    self.active_initiative = inits[0]
+                self.active_id = len(self.participants[self.active_initiative]) - 1
+            self.active.active = True
 
     @property
     def has_begun(self) -> bool:
@@ -104,10 +127,10 @@ class Fight:
 
     @property
     def active(self) -> typing.Optional[Participant]:
-        if self.active_id < 0 or self.active_initiative < 0 or self.active_initiative not in self.participants:
+        if self.active_id < 0 or (self.active_initiative < 0 or (self.active_initiative not in self.participants)):
             return None
         else:
-            if self.active_id >= len(self.participants[self.active_id]):
+            if self.active_id >= len(self.participants[self.active_initiative]):
                 return None
             return self.participants[self.active_initiative][self.active_id]
 
