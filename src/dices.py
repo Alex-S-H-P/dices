@@ -1,5 +1,6 @@
 import sys
 from typing import Optional
+import readline
 
 import tree_op
 from tree_op import node
@@ -224,7 +225,11 @@ def main():
     global CRITICAL_DICE_PERM
     P, v = None, None
     while True:
-        input_str = input()
+        try:
+            input_str = input(">>> ")
+        except EOFError:
+            print("\n" + "\033[36;1mBye !\033[0m")
+            break
         if input_str.lower() in EXIT_INPUTS:
             print("\033[36;1mBye !\033[0m")
             break
