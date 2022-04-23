@@ -57,7 +57,7 @@ def _handleComparaison(expression: str, left_child, right_child, add_msg_discord
     * In any other cases, returns 1 if the values compare according to the operator.
     """
     # type safeties
-    if expression not in (">", "<"):
+    if expression not in (">", "<", "<=", ">=", "=", "==", "!="):
         raise ValueError(f"Unexpected comparator expression {expression}")
     gt = expression == ">"
     if left_child is None or right_child is None:
@@ -66,7 +66,13 @@ def _handleComparaison(expression: str, left_child, right_child, add_msg_discord
     left_is_die = left_child.is_value and "d" in left_child.expression.lower()
     right_is_die = right_child.is_value and "d" in right_child.expression.lower()
     # ensuring that the comp_function is valid
-    comp_func = (lambda x, y: x > y) if gt else (lambda x, y: x < y)
+    comp_func = {">": lambda x, y : int(x > y),
+                 "<": lambda x, y : int(x <y ),
+                 "<=" : lambda x, y :int(x <= y),
+                 ">=" : lambda x, y: int(x >= y),
+                 "=": lambda x, y: int(x==y),
+                 "==": lambda x, y: int(x==y),
+                 "!=": lambda x, y:int(x != y)}[expression]
 
     # Are we in the first use case ?
     if xor(left_is_die, right_is_die):  # if one and only one of the sides is a die
@@ -290,7 +296,7 @@ class node:
                     self.value = k
                     if sigma > r:
                         break
-            elif self.expression in (">", "<"):
+            elif self.expression in (">", "<", "<=", ">=", "=", "==", "!="):
                 self.value, self.probas = _handleComparaison(self.expression, self.left_child, self.right_child)
         self.solved = True
         return self.value

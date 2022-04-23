@@ -7,7 +7,7 @@ from tree_op import node
 import errors
 
 EXIT_INPUTS = ["", "q", "quit", "no", "bye", "exit", "e", "-q", "-e"]
-OPERATION_TOKENS = ["+", "-", "*", "/", "(", ")", "|", "#", "&", ">", "<"].__add__(
+OPERATION_TOKENS = ["+", "-", "*", "/", "(", ")", "|", "#", "&", ">", "<", "<=", ">=", "=", "==", "!="].__add__(
     tree_op.ADVANTAGE_TOKEN + tree_op.DISADVANTAGE_TOKEN + tree_op.DROP_TOKEN
 )
 CRITICAL_DICE_PERM = tree_op.CRITICAL_DICE_PERM  # The dices that have a criticality
