@@ -50,8 +50,8 @@ async def on_message(message):
             print(e)
             raise e
         print(answer)
-        for mess in message_pile:
-            await message.channel.send(mess)
+        for msg in message_pile:
+            await message.channel.send(msg)
         await message.channel.send(clean(answer))
 
 
