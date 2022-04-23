@@ -1,5 +1,6 @@
 import random
 import typing
+from operator import xor
 
 import numpy as np
 
@@ -25,7 +26,7 @@ def p_len(s: str) -> int:
 
 
 def combine(d1: dict[int, float], d2: dict[int, float], op: typing.Callable):
-    result = {}
+    result: dict[int, float] = {}
     for v1 in d1:
         for v2 in d2:
             y = op(v1, v2)
@@ -46,6 +47,78 @@ def combinations(n_iter: int, max_n: int, min_n: int = 1) -> typing.Iterable:
             cur_list[pointer] = min_n
             pointer -= 1
             cur_list[pointer] += 1
+
+
+def _handleComparaison(expression: str, left_child, right_child, add_msg_discord=None) -> tuple[int, dict[int, float]]:
+    """
+    Handles the comparator expression.
+
+    * If the one side is a die value, counts the amount of dices that compare to the other value according to the operator.
+    * In any other cases, returns 1 if the values compare according to the operator.
+    """
+    # type safeties
+    if expression not in (">", "<"):
+        raise ValueError(f"Unexpected comparator expression {expression}")
+    gt = expression == ">"
+    if left_child is None or right_child is None:
+        raise ValueError(f"Comparator is alone and cannot work thusly")
+    # ensuring whether each value is a type
+    left_is_die = left_child.is_value and "d" in left_child.expression.lower()
+    right_is_die = right_child.is_value and "d" in right_child.expression.lower()
+    # ensuring that the comp_function is valid
+    comp_func = (lambda x, y: x > y) if gt else (lambda x, y: x < y)
+
+    # Are we in the first use case ?
+    if xor(left_is_die, right_is_die):  # if one and only one of the sides is a die
+        # shuffle the values
+        die_child = left_child if left_is_die else right_child
+        other_child = left_child if right_is_die else right_child
+
+        # read the die
+        if die_child.expression[0] == "d":
+            die_child.expression = "1" + die_child.expression
+        fragments = die_child.expression.split("d")
+        assert len(fragments) == 2, f"Unreadable dice expression : {die_child.expression}.\n" \
+                                    f"Try to write a value like 2d6 with 2 the number of dice " \
+                                    f"and 6 the amount of faces on each die"
+        multi, size = int(fragments[0]), int(fragments[1])
+
+        # read the other value
+        v2 = other_child.solve(add_msg_discord)
+        proba2 = other_child.probas
+
+        # roll the dice
+        probas = {0: 1.}
+        value = 0  # by default, no comparison succeeded.
+        die_proba: dict[int, float] = {i: 1 / size for i in range(1, size + 1)}
+        for i in range(multi):
+
+            # update the value and the proba
+            value += comp_func(dice_roll := random.randint(1, size), v2)
+            probas = combine(probas,
+                             combine(die_proba, proba2, comp_func),
+                             lambda x, y: x + y)  # we add to the stat the probas of having the comparison succeed
+
+            # handle critical rolls
+            if "d" + str(size) in CRITICAL_DICE_PERM + CRITICAL_DICE_TMP:
+                if dice_roll == 1:
+                    print(f"\033[33mDice {i} (of the {die_child.expression}) rolled a \033[31;1mNATURAL 1\033[33m "
+                          f"which is a critical failure\033[0m")
+                    if add_msg_discord is not None:
+                        add_msg_discord(f"Dice {i} (of the {die_child.expression}) rolled a **NATURAL 1** "
+                                        f"which is a **critical failure**")
+                elif dice_roll == size:
+                    print(f"\033[33mDice {i} (of the {die_child.expression}) rolled a "
+                          f"\033[32;1mNATURAL {size}\033[33m which is a critical success\033[0m")
+                    if add_msg_discord is not None:
+                        add_msg_discord(f"Dice {i} (of the {die_child.expression}) rolled a **NATURAL {size}** "
+                                        f"which is a **critical success**")
+        return value, probas
+    else:
+        v1, v2 = left_child.solve(add_msg_discord), right_child.solve(add_msg_discord)
+        probas = combine(left_child.probas, right_child.probas, op=comp_func)
+        return 1 if comp_func(v1, v2) else 0, probas
+    pass
 
 
 class node:
@@ -84,16 +157,10 @@ class node:
                 multi = int(fragments[0])
                 size = int(fragments[1])
                 self.probas = {0: 1.}
+                die_proba: dict[int, float] = {i: 1 / size for i in range(1, size + 1)}
                 for i in range(multi):
                     self.value += (dice_roll := random.randint(1, size))
-                    pb = {}
-                    for already_recorded in self.probas:
-                        for gotten in range(1, size + 1):
-                            if gotten + already_recorded in pb:
-                                pb[gotten + already_recorded] += 1 / size * self.probas[already_recorded]
-                            else:
-                                pb[gotten + already_recorded] = 1 / size * self.probas[already_recorded]
-                    self.probas = pb
+                    self.probas = combine(self.probas, die_proba, lambda x, y: x + y)
                     if "d" + str(size) in CRITICAL_DICE_PERM + CRITICAL_DICE_TMP:
                         if dice_roll == 1:
                             print(f"\033[33mDice {i} (of the {self.expression}) rolled a \033[31;1mNATURAL 1\033[33m "
@@ -223,6 +290,8 @@ class node:
                     self.value = k
                     if sigma > r:
                         break
+            elif self.expression in (">", "<"):
+                self.value, self.probas = _handleComparaison(self.expression, self.left_child, self.right_child)
         self.solved = True
         return self.value
 
