@@ -39,7 +39,7 @@ def find_function(instruction: list[str]) -> typing.Optional[fight_funcs.Operati
 
 
 def handle(command: str, display: fight_funcs.Display) -> str:
-    instruction = dices.segment(command.lower())
+    instruction = dices._segment(command.lower())
     method = find_function(instruction)
     if method is not None:
         try:

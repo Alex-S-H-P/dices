@@ -10,6 +10,9 @@ EXIT_INPUTS = ["", "q", "quit", "no", "bye", "exit", "e", "-q", "-e"]
 OPERATION_TOKENS = ["+", "-", "*", "/", "(", ")", "|", "#", "&", ">", "<", "<=", ">=", "=", "==", "!="].__add__(
     tree_op.ADVANTAGE_TOKEN + tree_op.DISADVANTAGE_TOKEN + tree_op.DROP_TOKEN
 )
+
+FIRST_CHARACTERS_OF_LONG_OPERATION_TOKENS = [token[0] for token in OPERATION_TOKENS if len(token) > 1]
+
 CRITICAL_DICE_PERM = tree_op.CRITICAL_DICE_PERM  # The dices that have a criticality
 CRITICAL_DICE_TMP = tree_op.CRITICAL_DICE_TMP
 NUM_LINES = 6
@@ -18,18 +21,44 @@ p_len = tree_op.p_len
 verbose = True
 
 
-def segment(i: str) -> list[str]:
+def _segment(i: str) -> list[str]:
     """Segments an instruction into a series of tokens that are computationable"""
     if verbose:
         print("\033[34m" + "segmenting...\033[0m")
     els = []
     cur = ""
-    for char in i:
-        # print("--", char, cur, els, char in OPERATION_TOKENS or char == " ")
-        if char in OPERATION_TOKENS or char == " ":
-            # print(char, cur, els, char == " ")
+
+    def partially_fits(string: str) -> bool:
+        """Returns true if this string is a substring of any OPERATION TOKEN"""
+        return sum([string in token and string != token for token in OPERATION_TOKENS]) != 0
+
+    for idx, char in enumerate(i):
+        # print("--", f"'{char}'", cur, els,
+        #       char in OPERATION_TOKENS or char == " ",
+        #       char in FIRST_CHARACTERS_OF_LONG_OPERATION_TOKENS,
+        #       sep="\t\t")
+        if char in FIRST_CHARACTERS_OF_LONG_OPERATION_TOKENS:
+            if partially_fits(cur + char):
+                cur += char
+            elif idx + 1 < len(i):
+                if sum([char + i[idx + 1] in token for token in OPERATION_TOKENS]) != 0:  # non exclusive partial fit
+                    if len(cur) > 0:
+                        els.append(cur)
+                    cur = char
+                elif cur + char in OPERATION_TOKENS:
+                    els.append(cur + char)
+                    cur = ""
+                elif char in OPERATION_TOKENS:
+                    if len(cur) > 0:
+                        els.append(cur)
+                    els.append(char)
+                    cur = ""
+                else:
+                    cur += char
+        elif char in OPERATION_TOKENS or char == " ":
             if len(cur) > 0:
                 els.append(cur)
+                cur = ""
             # If you have a parentheses with no operator beforehand,
             # then the operator is meant to be a multiplication sign (*)
             if len(els) > 0:
@@ -37,7 +66,7 @@ def segment(i: str) -> list[str]:
                     els.append("*")
             if char != " ":
                 els.append(char)
-            cur = ""
+                cur = ""
         else:
             # parentheses token
             if len(els) > 0:
@@ -45,7 +74,14 @@ def segment(i: str) -> list[str]:
                     # we have closed a parentheses with no operation on its right side.
                     # By default, this means that the operator is a multiplication (*)
                     els.append("*")
+                    # also, because we just added an element in els that is not ")",
+                    # the condition is no longer checked, and we won't have any issue
             cur += char
+            if cur in OPERATION_TOKENS:
+                if not partially_fits(cur):
+                    els.append(cur)
+                    cur = ""
+
     if len(cur) > 0:
         els.append(cur)
     return els
@@ -99,26 +135,27 @@ def show_P(proba: dict[int, float], roll: int = None) -> str:
     0.+----+----+----+--->
       0    5    A    F
     """
+    print("graphing: ", locals())
     lines: list[str] = ["" for _ in range(NUM_LINES)]
 
-    def write_at(char: str, x: int, y: int) -> None:
+    def write_at(char: str, _x: int, _y: int) -> None:
         if len(char) > 1:
             for i, c in enumerate(char):
-                write_at(c, x + i, y)
+                write_at(c, _x + i, _y)
             return
-        if p_len(lines[y]) <= x:
-            lines[y] += " " * (x - p_len(lines[y])) + char
+        if p_len(lines[_y]) <= _x:
+            lines[_y] += " " * (_x - p_len(lines[_y])) + char
         else:
             start = None
             end = -1
-            for char_idx in range(len(lines[y])):
-                if start is None and p_len(lines[y][:char_idx]) == x:
+            for char_idx in range(len(lines[_y])):
+                if start is None and p_len(lines[_y][:char_idx]) == _x:
                     start = char_idx
                     end = start + 1
-                elif p_len(lines[y][:char_idx]) == x:
+                elif p_len(lines[_y][:char_idx]) == _x:
                     end = char_idx
             # print(lines[y][:start], lines[y][end+1:], start, end, lines[y], x, y, sep="\033[0m||", end="\033[0m\n")
-            lines[y] = lines[y][:start] + char + lines[y][end + 1:]
+            lines[_y] = lines[_y][:start] + char + lines[_y][end + 1:]
 
     items, keys = proba.values(), sorted(proba.keys())
     y_max = max(items)
@@ -129,9 +166,9 @@ def show_P(proba: dict[int, float], roll: int = None) -> str:
     x_max = max(keys)
     n_lines = NUM_LINES - (3 if roll is not None else 2)
 
-    def scale(y: float) -> int:
+    def scale(_y: float) -> int:
         """Approximates the y coordinate in the plane"""
-        return int(n_lines * (y - y_min) / (y_max - y_min) + .5)
+        return int(n_lines * (_y - y_min) / (y_max - y_min) + .5)
 
     lines[0] = f"\033[36;1m{y_max:.2f}\033[0m"
     n = p_len(lines[0])
@@ -200,7 +237,7 @@ def _decipher(i: list[str], parentheses_priority_offset=10, add_msg_discord=None
 
 
 def decipher(i: str, add_msg_discord=None) -> tuple[int, int, float, dict[int:float]]:
-    t: tuple = tuple(_decipher(segment(i), add_msg_discord=add_msg_discord))
+    t: tuple = tuple(_decipher(_segment(i), add_msg_discord=add_msg_discord))
     while len(CRITICAL_DICE_TMP) > 0:
         CRITICAL_DICE_TMP.pop()  # we empty the temp list
     return t
