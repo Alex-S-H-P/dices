@@ -1,5 +1,3 @@
-import sys
-from typing import Optional
 import readline
 
 import tree_op

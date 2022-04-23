@@ -2,7 +2,6 @@
 
 import curses
 import curses.textpad as textpad
-import time
 import typing
 
 import dices

@@ -1,6 +1,4 @@
-import builtins
-import json
-import logging
+
 import pickle
 import typing
 from fight_back import Participant, Fight
@@ -74,7 +72,7 @@ def set_initiative(instruction: list[len], display: Display):
         if fighter.name == name:
             bracket = display.fight.participants[fighter.initiative]
             i = index(bracket, fighter)
-     b      bracket.pop(i)
+            bracket.pop(i)
             if len(bracket) == 0:
                 del display.fight.participants[fighter.initiative]
             display.fight.add(fighter, initiative)
