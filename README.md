@@ -34,10 +34,53 @@ You can now have a dnd compatible set of dices thanks to the handy `dnd` keyword
 
 You can use it like this !
 ```
-dnd
-1d20
+>>> dnd
+>>> 1d20
 ```
 
 You will now be warned if any of the d20s reach a critical value !
 
 have fun !
+
+## UPDATE RELEASE 3
+
+#### Introducing : comparisons !
+
+You can now afford to compare dices and values !
+
+To do so, simply use the comparaison operators ! These are :
+	* >  for "greater than"
+	* <  for "lesser than"
+	* <= for "lesser or equal"
+	* >= for "greater or equal"
+	* =  for "equal"
+	* != for "not equal"
+
+
+These operators return the number of successful comparisons. Here are a few examples : 
+
+```
+>>> 4d10 > 6
+```
+This will return the number of dices that got more than 6.
+
+```
+>>> d20 > 14
+```
+Returns 1 if the dice rolls over a 14.
+
+```
+>>> 2 + 6d20 > 14
+```
+This will add 2 to the numbers of count of dices that are over 14.
+
+```
+>>> 6d20 + 2 > 14
+```
+This will run the comparison, just find a failed comparison (since 2 < 14), and then add 6d20 over that. 
+If you don't want this behavior, just add parentheses !
+
+```
+>>> (6d20 + 2) > 14
+```
+Which will compute 6d20 + 2 and compare that to 14.
