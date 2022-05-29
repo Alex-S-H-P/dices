@@ -52,7 +52,7 @@ async def on_message(message):
         print(answer)
         for msg in message_pile:
             await message.channel.send(msg)
-        await message.channel.send(clean(answer))
+        await message.channel.send(clean(answer) + ")")
 
 
 if __name__ == '__main__':
