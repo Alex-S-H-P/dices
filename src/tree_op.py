@@ -180,7 +180,7 @@ class node:
                                   f"\033[32;1mNATURAL {size}\033[33m which is a critical success\033[0m")
                             if add_msg_discord is not None:
                                 add_msg_discord(f"Dice {i} (of the {self.expression}) rolled a **NATURAL {size}** "
-                                                f"which is a **critical success**")
+                                                        f"which is a **critical success**")
                                 print("reached")
                 self.solved = True
             else:

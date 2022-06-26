@@ -29,7 +29,10 @@ async def on_message(message):
     global d_probas, d_value
     # quick and dirty way to ensure that context persists
     message_pile = []
-    add_message = lambda x: message_pile.append(x)
+
+    def pre_add_message(x: str, channel):
+        client.loop.create_task(channel.send(x))
+
     if message.author == client.user:
         return
     elif message.content.startswith("$"):
@@ -40,6 +43,11 @@ async def on_message(message):
                 val = d_value[id]
             if id in d_probas:
                 prob = d_probas[id]
+            channel = message.channel
+
+            def add_message(x: str):
+                pre_add_message(x, channel)
+
             answer, probas, value = dices.discord_main(message.content[1:], prob, val, to_send_to=add_message)
             d_value[id] = value
             d_probas[id] = probas
