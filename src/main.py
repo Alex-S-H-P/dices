@@ -18,7 +18,7 @@ async def on_ready():
     for server in client.guilds:
         for channel in server.text_channels:
             if "bots" in channel.name:
-                await client.get_channel(channel.id).send("Waking Up !")
+                await client.get_channel(channel.id).send("I'm waking up !")
                 break
 
 
