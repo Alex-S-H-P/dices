@@ -1,3 +1,4 @@
+import re
 import readline
 
 import tree_op
@@ -13,7 +14,7 @@ FIRST_CHARACTERS_OF_LONG_OPERATION_TOKENS = [token[0] for token in OPERATION_TOK
 
 CRITICAL_DICE_PERM = tree_op.CRITICAL_DICE_PERM  # The dices that have a criticality
 CRITICAL_DICE_TMP = tree_op.CRITICAL_DICE_TMP
-NUM_LINES = 6
+NUM_LINES = 8
 INPUTS_THAT_ASK_FOR_GRAPH = ["graph", "draw", "g", "repartition", "see"]
 p_len = tree_op.p_len
 verbose = True
@@ -133,7 +134,6 @@ def show_P(proba: dict[int, float], roll: int = None) -> str:
     0.+----+----+----+--->
       0    5    A    F
     """
-    print("graphing: ", locals())
     lines: list[str] = ["" for _ in range(NUM_LINES)]
 
     def write_at(char: str, _x: int, _y: int) -> None:
@@ -273,7 +273,7 @@ def main():
                 if len(cmd) == 2 and cmd[1].isnumeric():
                     global NUM_LINES
                     NUM_LINES = int(cmd[1])
-                show_P(P, v)
+                print(show_P(P, v))
             else:
                 print("\033[31mCannot graph last dice roll as no dice roll was found in memory\033[0m")
             continue
@@ -309,7 +309,7 @@ def discord_main(command: str, P=None, v=None, to_send_to=None) -> tuple[str, di
             if len(cmd) == 2 and cmd[1].isnumeric():
                 global NUM_LINES
                 NUM_LINES = int(cmd[1])
-            return show_P(P, v), {}, 0.
+            return "```\n" + show_P(P, v) + "```", {}, 0.
         else:
             return "Cannot graph last dice roll as no dice roll was found in memory", {}, 0.
     elif command.lower() in ["dnd", "d&d", "critical", "crit", "dungeon&dragon", "crits", "criticals"

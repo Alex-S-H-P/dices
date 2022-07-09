@@ -13,7 +13,7 @@ def clean(txt: str) -> str:
 
 
 @client.event
-async def on_ready():
+async def not_on_ready():
     print(f"Logged in successfully as {client.user}")
     for server in client.guilds:
         for channel in server.text_channels:
@@ -60,7 +60,7 @@ async def on_message(message):
         print(answer)
         for msg in message_pile:
             await message.channel.send(msg)
-        await message.channel.send(clean(answer) + ")")
+        await message.channel.send(clean(answer) + (")" if answer.count("(") > answer.count(")") else ""))
 
 
 if __name__ == '__main__':
