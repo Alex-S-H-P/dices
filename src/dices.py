@@ -1,4 +1,3 @@
-import re
 import readline
 
 import tree_op
@@ -89,7 +88,7 @@ def _segment(i: str) -> list[str]:
 def consider_settings(i: list[str]) -> int:
     """Returns true if the token implement settings. Only the first tokens are considered as settings
 
-    Both the pipe ('|') character and the greater than ('>') mean that the setting is to be used only for this time.
+    Both the pipe ('|') character and the hashtag ('#') mean that the setting is to be used only for this time.
     The ampersand character means that the setting is to be kept for the whole session.
 
     Example :
@@ -98,7 +97,7 @@ def consider_settings(i: list[str]) -> int:
     then roll a d20.
     """
     # most commands won't be setting up anything. Let's have them go
-    splitting_tokens = ["|", "#", "&"]
+    splitting_tokens = ["|", "#"]
     permanent_tokens = ["&"]
     c = False
     global_parameter_to_set = []
@@ -284,7 +283,7 @@ def main():
             CRITICAL_DICE_PERM.append("d20")
             print("DND mode active. D20s will now announce critical scores")
             continue
-        elif input_str.lower() in ["reboot", "rb", "boot", "nocrit"]:
+        elif input_str.lower() in ["reset", "reboot", "rb", "boot", "nocrit"]:
             CRITICAL_DICE_PERM = []
             "Reset"
             print("-" * 63)

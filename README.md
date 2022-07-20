@@ -1,8 +1,22 @@
 # Dices
-a dice-parser to allow for better dnd games
 
 
-use the `dices` command to launch the parser.
+A ClI-based calculator with dice rolling in mind.
+
+## Table of contents
+
+* [Table of contents](#table-of-contents)
+* [General explaination](#general-explanation)
+* [Specifics](#specifics)
+  * [Advantage](#advantage)
+  * [Criticals](#criticals)
+  * [Dropping dice](#dropping)
+  * [Comparisons](#comparisons)
+  * [Graphing](#graphing)
+
+## General explanation
+
+Use the `dices` command to launch the parser.
 
 You will then be presented with this prompt.
 
@@ -11,13 +25,14 @@ You will then be presented with this prompt.
 DICE ENVIRONMENT
 ------------------------------------------
 
+>>> 
 ```
 
-You can then input a command. Each command will just be a formula like `1 + 2 + 3`
-It will then parse the formula, and return its value.
+You can then input a command. Each command will simply be a formula like `1 + 2 + 3`.
+DICES will then parse through this prompt and execute it.
 
-What is important here is that you can use dice commands instead of values.
-So instead of `1 + 2 + 3`, you can use `1d2 + 1d4`.
+What sets this apart here is the ability to use dice commands instead of values.
+So on top of `1 + 2 + 3`, you can use `1d2 + 1d4`.
 
 Please note that the expected value and the maximal values are returned on each computation, whether it contains dice commands or not.
 It might look like this :
@@ -26,25 +41,133 @@ It might look like this :
 Got 3 (out of 6 maximum, 4.0 expected)
 ```
 
-You can also use the `adv` and the `disadv` key words to enable advantage and disadvantage. **Please note that as of yet, critical success or failure is not taken into account when considering this**
+Dice operators are composed of two numbers separated by a "d".
+	* the leftmost number is the number of dice to be rolled. When absent, it is defaulted to 1.
+	* the rightmost number is the number of sides to the die.
 
-## UPDATE RELEASE 2
+## Specifics
+
+There are a lot more commands than just simple maths with dice.
+The abilities have grown corresponding to my own needs in table-top RPGs.
+
+DICES is not case sensitive.
+
+#### Exiting
+
+When your game is over, you may be tempted to just close the terminal window, but you don't need to.
+
+Either imputing a blank command or a `quit` will tell DICES that you want to leave, now.
+
+#### Equivalences
+
+`quit` is equivalent to :
+
+* `q`
+* `no`
+* `bye`
+* `exit`
+* `e`
+* `-q`
+* `-e`
+
+### Advantage
+
+You can also use the `adv` and the `disadv` key-words to enable advantage and disadvantage.
+
+### Criticals
 
 You can now have a dnd compatible set of dices thanks to the handy `dnd` keyword.
 
-You can use it like this !
+You will now be warned if any of the d20s reach a critical value !
+
+#### More control.
+
+The `reset` single line command allows to erase all critical dices. 
+
+You can deem that dices other than D20s are critical, 
+and therefore expect those to tell you if they reach critical values (their minimum or their maximum).
+
+To do so, you can use **pre-command instructions**.
+Those are executed, not on the execution step, but in compilation at the token seperation stage.
+
+These instructions are to be placed at the beginning of the command, and are to use seperators to mark their limit.
+
+These token can be :
+
+* "|", which is the default separating token
+* "#", which is its alternative
+* "&", which denotes that the result of the operation should be permanent.
+
+**NB** : Old documentation may mention the use of ">". 
+As of the comparison update, this token can no longer be used as a seperator.
+
+The instruction "crit" can then be used. 
+It requires its argument to be a die, declared as "dN", where N is the value of the die.
+
+
+#### Example
+The dnd shortcut can be used like this :
 ```
 >>> dnd
 >>> 1d20
 ```
+But it is a shortcut, as you could simply write
+```
+>>> crit d20 & d20
+```
+Or, if you wanted those results to be announced just once :
+```
+>>> crit d20 | d20
+```
+And finally to erase all critical dice :
+```
+>>> reset
+```
 
-You will now be warned if any of the d20s reach a critical value !
+#### Equivalences :
 
-have fun !
+These tokens are equivalent :
 
-## UPDATE RELEASE 3
+* for `dnd`:
+  * `d&d`
+  * `critical`
+  * `crit`
+  * `dungeon&dragon`
+  * `crits`
+  * `criticals`
+  * `dungeon & dragon`
+  * `dungeon and dragon`
+  * `count crits`
+  * `count criticals`
+  * `count critical`
+  * `d&d&d&d`
+* for `crit` (when used as a pre-command instruction):
+  * `crits`
+  * `crit`
+  * `warn`
+  * `warns`
+  * `critical`
+  * `c`
+  * `-c`
+* for `reset`:
+  * `reboot`
+  * `rb`
+  * `boot`
+  * `nocrit`
 
-#### Introducing : comparisons !
+### Dropping
+
+You can drop die depending on their result.
+
+This allows to roll "4d6 drop lowest" by litterally typing `4d6 drop lowest`.
+
+To drop multiple dice, just add this number to the command argument.
+
+To drop two dices, you can just say :
+
+`>>> 4d6 drop lowest2`
+
+### Comparisons
 
 You can now afford to compare dices and values !
 
@@ -56,6 +179,8 @@ To do so, simply use the comparaison operators ! These are :
 	* =  for "equal"
 	* != for "not equal"
 
+
+#### Example :
 
 These operators return the number of successful comparisons. Here are a few examples : 
 
@@ -84,3 +209,44 @@ If you don't want this behavior, just add parentheses !
 >>> (6d20 + 2) > 14
 ```
 Which will compute 6d20 + 2 and compare that to 14.
+
+### Graphing
+
+When rolling a die, one can wonder what the odds of their rolls where. Wonder no further !
+
+Thanks to the `graph` command, you can now see the odd of every result you could have had !
+
+The `graph` is a single line command. It should be the only thing input when it is.
+As a command that fetches the previous result, it expects a command to have been executed previously.
+
+#### Example :
+
+When running :
+
+```
+>>> d4*2d12
+>>> graph
+```
+
+You can expect this kind of result :
+
+```
+0.10+                 ###
+    |               #######
+    |              #########
+    |            #############
+    |          #################
+0.00+-----+----+----+----+----+----+----+>   +
+     12   17   22   27   32   37   42   47   52
+                      ^
+```
+
+_In this particular case, a 29 was rolled. This had about 1/10 chances of happening._
+
+#### Equivalences : 
+
+These commands are equivalent to `graph` :
+* `draw`
+* `g`
+* `repartition`
+* `see`
