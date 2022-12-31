@@ -13,6 +13,7 @@ A ClI-based calculator with dice rolling in mind.
   * [Dropping dice](#dropping)
   * [Comparisons](#comparisons)
   * [Graphing](#graphing)
+* [Dice bot](#dice-bot)
 
 ## General explanation
 
@@ -250,3 +251,26 @@ These commands are equivalent to `graph` :
 * `g`
 * `repartition`
 * `see`
+
+## Dice bot
+
+We also add a set of utilities to the `dices` toolkit for discord integration.
+
+### How to deploy the bot
+
+We recommend you follow a tutorial such as the one at [select hub](https://www.selecthub.com/resources/how-to-add-bots-to-discord/) to get your token.
+
+Save your token as the file `key.key` in the src folder (this file is ignored by git. If you copy this repository on any other VCS, ensure that the token is not copied along).
+
+You can then use `python3.10 src/main.py` to launch the bot.
+
+### Command line arguments
+
+The dices-bot has a few extra abilities. Their usage is usually as such : `routine [arguments...]`.
+Here are a few examples :
+
+- The **say** routine:
+  - will print on launch of the bot to any `test-bots` channel its one argument
+- The **to** routine:
+  - will redirect the previous say routine to any default channel of a given server or any channel of this name of any server the bot is connected to. 
+  - has one argument, the name of the channel/server
