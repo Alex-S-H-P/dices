@@ -16,7 +16,7 @@ def say(thing:str)-> None:
 
 def to(chan : str) -> None:
     if len(things_to_say)> 0:
-        things_to_say[-1][1] = chan
+        things_to_say[-1] = things_to_say[-1][0], chan
 
 client = discord.Client()
 d_probas: dict[int, dict] = {}
@@ -102,8 +102,8 @@ async def on_message(message):
 
 if __name__ == '__main__':
     pointer : int  = 1
-    print(sys.argv, sys.argv[pointer], "found" if sys.argv[pointer] in say_command else "not found")
     while len(sys.argv) > pointer:
+        print(sys.argv, sys.argv[pointer], "found" if sys.argv[pointer] in say_command else "not found")
         cur_arg = sys.argv[pointer]
         cmd = commands[cur_arg]
         if cur_arg in commands and pointer + cmd[1] < len(sys.argv):
