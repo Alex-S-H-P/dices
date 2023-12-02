@@ -8,33 +8,39 @@ import sys
 
 call = typing.Callable[[str, ...], None]
 
-things_to_say : list[tuple[str, str]] = []
+things_to_say: list[tuple[str, str]] = []
 
 
-def say(thing:str)-> None:
+def say(thing: str) -> None:
     things_to_say.append((thing, ""))
 
-def to(chan : str) -> None:
-    if len(things_to_say)> 0:
+
+def to(chan: str) -> None:
+    if len(things_to_say) > 0:
         things_to_say[-1] = things_to_say[-1][0], chan
 
-client = discord.Client()
+
+intents = discord.Intents.default()
+intents.message_content = True
+
+
+client = discord.Client(intents=intents)
 d_probas: dict[int, dict] = {}
 d_value: dict[int, float] = {}
 
-
-say_command : list[str] = ["say", "--say", "-s", "tell", "write", "print"]
-to_command : list[str] = ["to", "--to", "-t", ]
-specific_command_types : list[typing.Union[list[tuple[call, int] , str]]] = [
+say_command: list[str] = ["say", "--say", "-s", "tell", "write", "print"]
+to_command: list[str] = ["to", "--to", "-t", ]
+specific_command_types: list[typing.Union[list[tuple[call, int], str]]] = [
     [(say, 1)] + say_command,
     [(to, 1)] + to_command
 ]
 
-commands : dict[str, tuple[call, int]] = {}
+commands: dict[str, tuple[call, int]] = {}
 for command_type in specific_command_types:
     cmd = command_type[0]
     for command in command_type[1:]:
         commands[command] = cmd
+
 
 def clean(txt: str) -> str:
     return re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]').sub("", txt)
@@ -52,7 +58,11 @@ async def on_ready():
         for server in client.guilds:
             for channel in server.text_channels:
                 print(f"\tLooking at channel {channel.name} of server {server.name}")
-                if ((not thing[1] or server.name == thing[1]) and "test-bots" in channel.name) or channel.name == thing[1]:
+                if (
+                    (not thing[1] or server.name == thing[1])
+                    and
+                    "test-bots" in channel.name
+                ) or channel.name == thing[1]:
                     print("\t\tMatched !")
                     await client.get_channel(channel.id).send(thing[0])
 
@@ -63,7 +73,7 @@ async def on_message(message):
     chan_id = message.channel.id
     global d_probas, d_value
     # quick and dirty way to ensure thatclient. context persists
-    message_pile:list[str] = []
+    message_pile: list[str] = []
 
     def pre_add_message(x: str, chan):
         client.loop.create_task(chan.send(x))
@@ -101,15 +111,20 @@ async def on_message(message):
 
 
 if __name__ == '__main__':
-    pointer : int  = 1
+    pointer: int = 1
     while len(sys.argv) > pointer:
         print(sys.argv, sys.argv[pointer], "found" if sys.argv[pointer] in say_command else "not found")
         cur_arg = sys.argv[pointer]
         cmd = commands[cur_arg]
         if cur_arg in commands and pointer + cmd[1] < len(sys.argv):
             print(cmd)
-            print(sys.argv[pointer+1:], sys.argv[:pointer+cmd[1]])
-            cmd[0](*(sys.argv[pointer+1:pointer+cmd[1]+1] if cmd[1] > 0 else [])) # we load the sys.argv into the right arguments
+            print(sys.argv[pointer + 1:], sys.argv[:pointer + cmd[1]])
+            cmd[0](
+                *(sys.argv[pointer + 1:pointer + cmd[1] + 1]
+                  if cmd[1] > 0
+                  else []
+                  )
+            )  # we load the sys.argv into the right arguments
 
             pointer += cmd[1]
         pointer += 1
