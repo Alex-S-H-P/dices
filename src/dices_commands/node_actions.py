@@ -194,7 +194,8 @@ class Node(ABC):
             dn = self.left_child.first_die_child()
         if dn is not None:
             return dn
-        return self.right_child.first_die_child()
+        elif self.right_child is not None:
+            return self.right_child.first_die_child()
 
     @property
     def probas(self):
