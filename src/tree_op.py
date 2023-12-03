@@ -206,7 +206,6 @@ class CompNode(Node, ABC, command='$'):
         self._probas = None
 
         for i in range(number):
-            print("Iteration n°", i)
             result, probas = dice_side.run()
             if dice_left:
                 rslt += self._op(result, comp_to)
