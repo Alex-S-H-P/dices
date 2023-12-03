@@ -68,7 +68,7 @@ async def on_ready():
 
 
 @client.event
-async def on_message(message):
+async def on_message(message: discord.Message):
     # print(message.__class__.__name__, message.channel.__class__.__name__, (id := message.channel.id))
     chan_id = message.channel.id
     global d_probas, d_value
@@ -94,7 +94,10 @@ async def on_message(message):
             def add_message(x: str):
                 pre_add_message(x, channel)
 
-            answer, probas, value = dices.discord_main(message.content[1:], prob, val, to_send_to=add_message)
+            answer, probas, value = await dices.discord_main(
+                message.content[1:], prob, val, to_send_to=add_message,
+                channel=channel
+            )
             d_value[chan_id] = value
             d_probas[chan_id] = probas
         except errors.ShutDownCommand as er:

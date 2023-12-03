@@ -1,4 +1,7 @@
 import readline
+from typing import Callable
+
+import discord
 
 import dices_commands.node_actions as nodes
 import tree_op
@@ -273,10 +276,7 @@ def main():
             break
         elif (cmd := input_str.lower().split())[0] in INPUTS_THAT_ASK_FOR_GRAPH:
             if P is not None:
-                if len(cmd) == 2 and cmd[1].isnumeric():
-                    global NUM_LINES
-                    NUM_LINES = int(cmd[1])
-                print(show_P(P, v))
+                draw_figure_discord(P, v)
             else:
                 print("\033[31mCannot graph last dice roll as no dice roll was found in memory\033[0m")
             continue
@@ -313,28 +313,90 @@ def main():
         print("-" * 63)
 
 
-def discord_main(command: str, P=None, v=None, to_send_to=None) -> tuple[str, dict, float]:
+async def draw_figure_discord(P: nodes.P_FIELD, v: int, channel):
+    print(P)
+    import matplotlib as mpl
+    import os
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch
+    from datetime import datetime
+
+    COLOR = 'white'
+    mpl.rcParams['text.color'] = COLOR
+    mpl.rcParams['axes.labelcolor'] = COLOR
+    mpl.rcParams['xtick.color'] = COLOR
+    mpl.rcParams['ytick.color'] = COLOR
+
+    fig = plt.figure(facecolor=(66/255, 69/255, 73/255))
+    ax = fig.add_subplot(1, 1, 1)
+
+    E = sum([
+        k * P[k]
+        for k in P
+    ]) if P else 0
+
+    plt.bar(
+        list(P.keys()), list(P.values()), width=.95,
+        color=(114/255, 137/255, 218/255)
+    )
+
+    new_patches = []
+    for patch in reversed(ax.patches):
+        bb = patch.get_bbox()
+        color = patch.get_facecolor()
+        p_bbox = FancyBboxPatch(
+            (bb.xmin, 0),
+            abs(bb.width), abs(bb.height),
+            boxstyle="round,pad=1e-3,rounding_size=0.015",
+            ec="none", fc=color,
+        )
+        patch.remove()
+        new_patches.append(p_bbox)
+    for patch in new_patches:
+        ax.add_patch(patch)
+
+    plt.vlines(
+        (v, E), 0,
+        max(*P.values()),
+        colors=('w', 'r')
+    )
+    ax.set_ylim(bottom=0)
+    plt.xlabel("Score")
+    plt.ylabel("Probability")
+    plt.legend()
+
+    ax.set_facecolor((54/255, 57/255, 62/255))
+    fname = f'tmp-{int(datetime.now().timestamp() * 10)}.png'
+    plt.savefig(fname)
+
+    await channel.send(file=discord.File(fname))
+    os.unlink(fname)
+
+
+async def discord_main(
+        command: str, P: nodes.P_FIELD = None,
+        v: int = None, to_send_to: Callable[[str], None] = None,
+        channel: discord.TextChannel = None
+) -> tuple[str, dict, int]:
     global CRITICAL_DICE_PERM
     if command.lower() in ["", "q", "quit", "no", "bye", "exit", "e", "-q", "-e"]:
         print("\033[36;1mBye !\033[0m")
         raise errors.ShutDownCommand()
     elif (cmd := command.lower().split())[0] in INPUTS_THAT_ASK_FOR_GRAPH:
         if P is not None:
-            if len(cmd) == 2 and cmd[1].isnumeric():
-                global NUM_LINES
-                NUM_LINES = int(cmd[1])
-            return "```\n" + show_P(P, v) + "```", {}, 0.
+            await draw_figure_discord(P, v, channel)
+            return "```\n" + show_P(P, v) + "```", {}, 0
         else:
-            return "Cannot graph last dice roll as no dice roll was found in memory", {}, 0.
+            return "Cannot graph last dice roll as no dice roll was found in memory", {}, 0
     elif command.lower() in ["dnd", "d&d", "critical", "crit", "dungeon&dragon", "crits", "criticals"
                                                                                           "dungeon & dragon",
                              "dungeon and dragon", "count crits", "count criticals",
                              "count critical", "d&d&d&d"]:
         CRITICAL_DICE_PERM.append("d20")
-        return "DND mode active. D20s will now announce critical scores", {}, 0.
+        return "DND mode active. D20s will now announce critical scores", {}, 0
     elif command.lower() in ["reboot", "rb", "boot", "nocrit"]:
         CRITICAL_DICE_PERM = []
-        return "Reset", {}, 0.
+        return "Reset", {}, 0
     try:
         v, m, a, P = decipher(command, add_msg_discord=to_send_to)
         return '\tResult :\n\n' + \
