@@ -1,7 +1,9 @@
 import readline
 
+import dices_commands.node_actions as nodes
 import tree_op
-from tree_op import node
+from tree_op import Node
+from dices_commands.utils import ansi_skipping_len
 import errors
 
 EXIT_INPUTS = ["", "q", "quit", "no", "bye", "exit", "e", "-q", "-e"]
@@ -11,11 +13,10 @@ OPERATION_TOKENS = ["+", "-", "*", "/", "(", ")", "|", "#", "&", ">", "<", "<=",
 
 FIRST_CHARACTERS_OF_LONG_OPERATION_TOKENS = [token[0] for token in OPERATION_TOKENS if len(token) > 1]
 
-CRITICAL_DICE_PERM = tree_op.CRITICAL_DICE_PERM  # The dices that have a criticality
-CRITICAL_DICE_TMP = tree_op.CRITICAL_DICE_TMP
+CRITICAL_DICE_PERM = nodes.CRITICAL_DICE_PERM  # The dices that have a criticality
+CRITICAL_DICE_TMP = nodes.CRITICAL_DICE_TMP
 NUM_LINES = 8
 INPUTS_THAT_ASK_FOR_GRAPH = ["graph", "draw", "g", "repartition", "see"]
-p_len = tree_op.p_len
 verbose = True
 
 
@@ -69,7 +70,7 @@ def _segment(i: str) -> list[str]:
             # parentheses token
             if len(els) > 0:
                 if els[-1] == ")":  # and char not in OPERATION_TOKEN (already verified due to being in the else close)
-                    # we have closed a parentheses with no operation on its right side.
+                    # We have closed the parentheses with no operation on its right side.
                     # By default, this means that the operator is a multiplication (*)
                     els.append("*")
                     # also, because we just added an element in els that is not ")",
@@ -96,7 +97,7 @@ def consider_settings(i: list[str]) -> int:
     means make the d20 critical (warns you when you hit either a 1 or a 20) for the whole session
     then roll a d20.
     """
-    # most commands won't be setting up anything. Let's have them go
+    # Most commands won't be setting up anything. Let's have them go
     splitting_tokens = ["|", "#"]
     permanent_tokens = ["&"]
     c = False
@@ -117,7 +118,7 @@ def consider_settings(i: list[str]) -> int:
             return idx + 1
         if token.lower() in ["crits", "crit", "warn", "warns", "critical", "c", "-c"]:
             # we now want to crit.
-            # the next token must be a dice (because otherwise we would have just set ourselves for a dnd mode
+            # the next token must be a die (because otherwise we would have just set ourselves for a dnd mode
             NEXT_TOKEN = i[idx + 1]
             assert "d" in NEXT_TOKEN and NEXT_TOKEN[1:].isnumeric()
             global_parameter_to_set.append(NEXT_TOKEN)
@@ -140,16 +141,16 @@ def show_P(proba: dict[int, float], roll: int = None) -> str:
             for i, c in enumerate(char):
                 write_at(c, _x + i, _y)
             return
-        if p_len(lines[_y]) <= _x:
-            lines[_y] += " " * (_x - p_len(lines[_y])) + char
+        if ansi_skipping_len(lines[_y]) <= _x:
+            lines[_y] += " " * (_x - ansi_skipping_len(lines[_y])) + char
         else:
             start = None
             end = -1
             for char_idx in range(len(lines[_y])):
-                if start is None and p_len(lines[_y][:char_idx]) == _x:
+                if start is None and ansi_skipping_len(lines[_y][:char_idx]) == _x:
                     start = char_idx
                     end = start + 1
-                elif p_len(lines[_y][:char_idx]) == _x:
+                elif ansi_skipping_len(lines[_y][:char_idx]) == _x:
                     end = char_idx
             # print(lines[y][:start], lines[y][end+1:], start, end, lines[y], x, y, sep="\033[0m||", end="\033[0m\n")
             lines[_y] = lines[_y][:start] + char + lines[_y][end + 1:]
@@ -168,13 +169,13 @@ def show_P(proba: dict[int, float], roll: int = None) -> str:
         return int(n_lines * (_y - y_min) / (y_max - y_min) + .5)
 
     lines[0] = f"\033[36;1m{y_max:.2f}\033[0m"
-    n = p_len(lines[0])
+    n = ansi_skipping_len(lines[0])
     lines[0] += "+\033[33;1m"
     lines[n_lines] = f"\033[36;1m{y_min:.2f}\033[0m+"
     for l_nb in range(1, n_lines):
         lines[l_nb] = " " * n + "|\033[33;1m"
     n += 1
-    for x in proba:
+    for x in sorted(proba.keys()):
         precise_y = proba[x]
         for y in range(scale(precise_y)):
             write_at("#", x + n - x_min, n_lines - 1 - y)
@@ -184,17 +185,17 @@ def show_P(proba: dict[int, float], roll: int = None) -> str:
         if step != x_min:
             write_at("+", step + n - x_min, n_lines)
         write_at(str(step), step + n - x_min, n_lines + 1)
-    # if there is a pointer, print it !
+    # if there is a pointer, print it!
     if roll is not None:
         lines[-1] = " " * (n + roll - x_min) + "\033[32;1m^\033[0m"
-    val = ""
-    for line in lines:
-        val += line + "\n"
-    return val
+    return "\n".join(lines)
 
 
-def _decipher(i: list[str], parentheses_priority_offset=10, add_msg_discord=None) -> tuple[
-    int, int, float, dict[int, float]]:
+def _decipher(
+        i: list[str],
+        parentheses_priority_offset=10,
+        add_msg_discord=None
+) -> tuple[int, int, float, dict[int, float]]:
     """Renvoie une valeur aléatoire, la valeur maximale et la valeur moyenne à laquelle on pourrait s'attendre
     Operation order : (), *, /, +, -, dice
     Parentheses do not need to be closed
@@ -210,7 +211,7 @@ def _decipher(i: list[str], parentheses_priority_offset=10, add_msg_discord=None
             base_priority += parentheses_priority_offset
         else:
             base_priority -= parentheses_priority_offset
-    cur_node = node(i[0] not in OPERATION_TOKENS, i[0])
+    cur_node = Node.make(i[0])
     for token in i[1:]:
         if token in ("(", ")"):
             if token == "(":
@@ -218,19 +219,22 @@ def _decipher(i: list[str], parentheses_priority_offset=10, add_msg_discord=None
             else:
                 base_priority -= parentheses_priority_offset
             continue
-        token_node = node(token not in OPERATION_TOKENS, token, base_priority)
+        token_node = Node.make(token, base_priority)
         try:
             cur_node += token_node
         except Exception as e:
             print(cur_node)  # dump the data in the log for debugging purposes
             raise e
-    print(cur_node)
-    cur_node.solve(add_msg_discord)
     # print(cur_node.probas, sum([k * cur_node.probas[k] for k in cur_node.probas]))
-    return (cur_node.solve(add_msg_discord), max(cur_node.probas.keys()),
-            sum([k * cur_node.probas[k] for k in cur_node.probas]) if len(cur_node.probas) > 0 else 0,
-            cur_node.probas
-            )
+    return (
+        cur_node.run(add_msg_discord)[0],
+        max(cur_node.probas.keys()),
+        sum([
+            k * cur_node.probas[k]
+            for k in cur_node.probas
+        ]) if len(cur_node.probas) > 0 else 0,
+        cur_node.probas
+    )
 
 
 def decipher(i: str, add_msg_discord=None) -> tuple[int, int, float, dict[int:float]]:
@@ -294,7 +298,18 @@ def main():
                   f'Got {colorise(v, P)} (out of \033[36;1m{m}\033[0m maximum, \033[36;1m{a:.2f}\033[0m expected, ' +
                   f'F = \033[36;1m{100 * getF(P, v):.1f}%\033[0m)')
         except Exception as e:
-            print(f"\033[31m{e}\033[0m")
+            print(
+                "\033[31m",  # color red
+                "\n".join(
+                    str(e)
+                    .strip("'").strip('"')
+                    .replace('\\t', '\t')
+                    .replace(r'\\', '\\')
+                    .split(r"\n")
+                ),
+                "\033[0m",  # clean
+                sep=''
+            )
         print("-" * 63)
 
 
