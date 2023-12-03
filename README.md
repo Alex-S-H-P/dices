@@ -197,19 +197,10 @@ Returns 1 if the dice rolls over a 14.
 
 ```
 >>> 2 + 6d20 > 14
-```
-This will add 2 to the numbers of count of dices that are over 14.
-
-```
 >>> 6d20 + 2 > 14
-```
-This will run the comparison, just find a failed comparison (since 2 < 14), and then add 6d20 over that. 
-If you don't want this behavior, just add parentheses !
-
-```
 >>> (6d20 + 2) > 14
 ```
-Which will compute 6d20 + 2 and compare that to 14.
+Since the last upload, this results in counting the number of dice that are greater than (14-2) = 12. All of these are equivalent.
 
 ### Graphing
 
@@ -219,6 +210,10 @@ Thanks to the `graph` command, you can now see the odd of every result you could
 
 The `graph` is a single line command. It should be the only thing input when it is.
 As a command that fetches the previous result, it expects a command to have been executed previously.
+
+#### On Discord
+
+The discord bot uses matplotlib to generate a graph that is more palletable for graphical use.
 
 #### Example :
 
