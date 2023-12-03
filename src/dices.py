@@ -228,7 +228,7 @@ def _decipher(
         except Exception as e:
             print(cur_node)  # dump the data in the log for debugging purposes
             raise e
-    # print(cur_node.probas, sum([k * cur_node.probas[k] for k in cur_node.probas]))
+    print(cur_node)
     return (
         cur_node.run(add_msg_discord)[0],
         max(cur_node.probas.keys()),
